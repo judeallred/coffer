@@ -67,3 +67,56 @@ This project is implemented as a single-page static client side website. It uses
 - Builds to static files for flexible deployment options
 - Support for GitHub Pages deployment
 - Support for custom domain deployment
+
+# Implementation Progress
+
+## Core Setup
+- [x] Set up Deno + pnpm + Preact project structure with development configuration
+- [x] Configure chia-wallet-sdk git submodule and cargo build integration
+- [x] Configure styled components and establish minimalist design system
+- [x] Set up strong ESLint rules and strict TypeScript configuration
+
+## UI Components
+- [x] Implement dynamic offer input rows (5 initial, auto-expand when filled)
+- [x] Create individual offer preview components (Dexie table-style)
+- [x] Build combined offer preview display (Dexie detail-style)
+- [x] Implement error boxes below inputs and accordion error log
+- [x] Implement toast system for user feedback
+
+## Functionality
+- [ ] Integrate wallet SDK for offer validation and parsing
+- [x] Add clipboard copy and .offer file download functionality
+- [ ] Implement offer combining logic using wallet SDK
+
+## Quality & Testing
+- [ ] Write unit tests for all wallet SDK interactions
+- [x] Configure production build and static file deployment
+
+# Development Status
+
+## ✅ Completed Features
+- **Core Architecture**: Full Deno + Preact + Styled Components setup
+- **Development Environment**: Hot reloading dev server with TypeScript
+- **UI Framework**: Minimalist design system with CSS variables
+- **Input Management**: 5 initial rows with auto-expansion when filled
+- **Individual Previews**: Dexie-style compact offer previews below each input
+- **Combined Preview**: Large preview showing the final combined offer result
+- **Error Handling**: Expandable error boxes per offer + accordion error log
+- **Toast System**: Success/error notifications with auto-dismiss
+- **File Operations**: Clipboard copy and .offer file download
+- **Type Safety**: Strict TypeScript with comprehensive type definitions
+
+## 🚧 In Progress / Next Steps
+- **Real Validation**: Replace mock validation with chia-wallet-sdk integration
+- **Offer Combining**: Implement actual offer combining logic using WASM
+- **Unit Testing**: Test coverage for all wallet SDK interactions
+
+## 🎯 Ready to Use
+The application is **fully functional** with mock data and can be used to:
+1. Paste offer strings into input fields
+2. See validation feedback and individual previews
+3. View combined offer preview
+4. Copy results to clipboard or download as .offer files
+5. Monitor application logs and errors
+
+Run `deno task dev` to start development server at http://localhost:8000
