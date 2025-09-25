@@ -11,9 +11,6 @@ export function App(): JSX.Element {
   const [offers, setOffers] = useState<Offer[]>([
     { id: '1', content: '', isValid: false },
     { id: '2', content: '', isValid: false },
-    { id: '3', content: '', isValid: false },
-    { id: '4', content: '', isValid: false },
-    { id: '5', content: '', isValid: false },
   ]);
 
   const [combinedOffer, _setCombinedOffer] = useState<string>('');
@@ -26,12 +23,25 @@ export function App(): JSX.Element {
         : offer
     ));
 
-    // Auto-expand: add new row if all current rows are filled
-    const allFilled = offers.every(offer => offer.content.trim() !== '');
-    if (allFilled && content.trim() !== '') {
-      const newId = String(offers.length + 1);
+    // Auto-expand: if this is the last field and it has content, add a new field
+    const currentOffers = offers;
+    const lastOffer = currentOffers[currentOffers.length - 1];
+    if (lastOffer.id === id && content.trim() !== '') {
+      const newId = String(currentOffers.length + 1);
       setOffers(prev => [...prev, { id: newId, content: '', isValid: false }]);
     }
+  };
+
+  const deleteOffer = (id: string): void => {
+    setOffers(prev => {
+      const filtered = prev.filter(offer => offer.id !== id);
+      // Ensure we always have at least 2 offers
+      if (filtered.length < 2) {
+        const nextId = String(Math.max(...prev.map(o => parseInt(o.id) || 0)) + 1);
+        return [...filtered, { id: nextId, content: '', isValid: false }];
+      }
+      return filtered;
+    });
   };
 
   const logError = (message: string, type: 'error' | 'warning' | 'info' = 'error'): void => {
@@ -69,12 +79,13 @@ export function App(): JSX.Element {
       <Header />
       <main className="main-content">
         <div className="content-grid">
-          <OfferInputs 
-            offers={offers}
-            onUpdateOffer={updateOffer}
-            onLogError={logError}
-            setOffers={setOffers}
-          />
+        <OfferInputs 
+          offers={offers}
+          onUpdateOffer={updateOffer}
+          onLogError={logError}
+          onDeleteOffer={deleteOffer}
+          setOffers={setOffers}
+        />
           <CombinedPreview 
             offers={offers.filter(o => o.isValid)}
             combinedOffer={combinedOffer}

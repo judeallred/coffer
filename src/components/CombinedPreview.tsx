@@ -1,5 +1,7 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import type { Offer, AssetData } from '../types/index.ts';
+
+type ButtonState = 'idle' | 'loading' | 'success' | 'error';
 
 interface CombinedPreviewProps {
   offers: Offer[];
@@ -21,8 +23,37 @@ export function CombinedPreview({
   onLogError 
 }: CombinedPreviewProps): JSX.Element {
   const [_isGenerating, _setIsGenerating] = useState(false);
+  const [copyButtonState, setCopyButtonState] = useState<ButtonState>('idle');
+  const [downloadButtonState, setDownloadButtonState] = useState<ButtonState>('idle');
+  const [currentCombinedOffer, setCurrentCombinedOffer] = useState<string>('');
+  
+  const getButtonContent = (state: ButtonState, idleText: string, idleIcon: string) => {
+    switch (state) {
+      case 'loading':
+        return { text: 'Processing...', icon: '⏳' };
+      case 'success':
+        return { text: 'Success!', icon: '✅' };
+      case 'error':
+        return { text: 'Failed', icon: '❌' };
+      default:
+        return { text: idleText, icon: idleIcon };
+    }
+  };
 
   const validOffers = offers.filter(offer => offer.isValid && offer.parsedData);
+  
+  // Update combined offer when valid offers change
+  useEffect(() => {
+    const updateCombinedOffer = async () => {
+      if (validOffers.length > 0) {
+        const combined = await generateCombinedOffer();
+        setCurrentCombinedOffer(combined || '');
+      } else {
+        setCurrentCombinedOffer('');
+      }
+    };
+    updateCombinedOffer();
+  }, [validOffers.length, validOffers.map(o => o.content).join(',')]);
   
   // Combine all requested/offered assets from valid offers
   const combinedRequested: AssetData[] = [];
@@ -37,51 +68,149 @@ export function CombinedPreview({
     }
   });
 
-  const handleCopyToClipboard = async (): Promise<void> => {
-    // First, generate the combined offer if not already done
-    const combined = await generateCombinedOffer();
-    if (!combined) {
-      onLogError('No valid offers to combine', 'warning');
-      return;
-    }
-
+  const copyToClipboardFallback = (text: string): boolean => {
     try {
-      await navigator.clipboard.writeText(combined);
-      onLogError('Combined offer copied to clipboard', 'info');
+      // Create a temporary textarea element
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'absolute';
+      textarea.style.left = '-9999px';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
       
-      // Show toast notification
+      // Select and copy the text
+      textarea.select();
+      textarea.setSelectionRange(0, 99999); // For mobile devices
+      const successful = document.execCommand('copy');
+      
+      // Clean up
+      document.body.removeChild(textarea);
+      
+      return successful;
+    } catch (error) {
+      console.error('Fallback copy failed:', error);
+      return false;
+    }
+  };
+
+  const handleCopyToClipboard = async (): Promise<void> => {
+    if (copyButtonState !== 'idle') return; // Prevent multiple clicks
+    
+    setCopyButtonState('loading');
+    
+    try {
+      // First, generate the combined offer if not already done
+      const combined = await generateCombinedOffer();
+      if (!combined) {
+        setCopyButtonState('error');
+        onLogError('No valid offers to combine', 'warning');
+        setTimeout(() => setCopyButtonState('idle'), 2000);
+        return;
+      }
+
+      console.log('🔍 Attempting to copy offer:', combined.substring(0, 50) + '...');
+      
+      let copySuccessful = false;
+      
+      // Try modern clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(combined);
+          // Verify it was actually copied by reading it back
+          const clipboardText = await navigator.clipboard.readText();
+          if (clipboardText === combined) {
+            copySuccessful = true;
+            console.log('✅ Modern clipboard API successful');
+          } else {
+            console.log('⚠️ Modern clipboard API wrote but verification failed');
+          }
+        } catch (clipError) {
+          console.log('⚠️ Modern clipboard API failed:', clipError);
+        }
+      }
+      
+      // If modern API failed, try fallback method
+      if (!copySuccessful) {
+        console.log('🔄 Trying fallback copy method...');
+        copySuccessful = copyToClipboardFallback(combined);
+        if (copySuccessful) {
+          console.log('✅ Fallback copy method successful');
+        }
+      }
+      
+      if (copySuccessful) {
+        setCopyButtonState('success');
+        onLogError('Combined offer copied to clipboard', 'info');
+        
+        // Show toast notification
+        const { showToast } = await import('./ToastContainer.tsx');
+        showToast('Combined offer copied to clipboard!', 'success');
+      } else {
+        throw new Error('Both clipboard methods failed');
+      }
+      
+      // Reset button state after 2 seconds
+      setTimeout(() => setCopyButtonState('idle'), 2000);
+      
+    } catch (error) {
+      setCopyButtonState('error');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      onLogError(`Failed to copy to clipboard: ${errorMessage}`, 'error');
+      
       const { showToast } = await import('./ToastContainer.tsx');
-      showToast('Combined offer copied to clipboard!', 'success');
-    } catch (_error) {
-      onLogError('Failed to copy to clipboard', 'error');
-      const { showToast } = await import('./ToastContainer.tsx');
-      showToast('Failed to copy to clipboard', 'error');
+      showToast('Copy failed - use the text box below to copy manually', 'error');
+      
+      // Reset button state after 2 seconds
+      setTimeout(() => setCopyButtonState('idle'), 2000);
     }
   };
 
   const handleDownload = async (): Promise<void> => {
-    // First, generate the combined offer if not already done
-    const combined = await generateCombinedOffer();
-    if (!combined) {
-      onLogError('No valid offers to combine', 'warning');
-      return;
-    }
-
-    const blob = new Blob([combined], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `combined-offer-${Date.now()}.offer`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    onLogError('Combined offer downloaded', 'info');
+    if (downloadButtonState !== 'idle') return; // Prevent multiple clicks
     
-    // Show toast notification
-    const { showToast } = await import('./ToastContainer.tsx');
-    showToast('Combined offer downloaded successfully!', 'success');
+    setDownloadButtonState('loading');
+    
+    try {
+      // First, generate the combined offer if not already done
+      const combined = await generateCombinedOffer();
+      if (!combined) {
+        setDownloadButtonState('error');
+        onLogError('No valid offers to combine', 'warning');
+        setTimeout(() => setDownloadButtonState('idle'), 2000);
+        return;
+      }
+
+      const blob = new Blob([combined], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `combined-offer-${Date.now()}.offer`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setDownloadButtonState('success');
+      onLogError('Combined offer downloaded', 'info');
+      
+      // Show toast notification
+      const { showToast } = await import('./ToastContainer.tsx');
+      showToast('Combined offer downloaded successfully!', 'success');
+      
+      // Reset button state after 2 seconds
+      setTimeout(() => setDownloadButtonState('idle'), 2000);
+      
+    } catch (error) {
+      setDownloadButtonState('error');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      onLogError(`Error downloading offer: ${errorMessage}`, 'error');
+      
+      const { showToast } = await import('./ToastContainer.tsx');
+      showToast('Failed to download offer', 'error');
+      
+      // Reset button state after 2 seconds
+      setTimeout(() => setDownloadButtonState('idle'), 2000);
+    }
   };
 
   const generateCombinedOffer = async (): Promise<string | null> => {
@@ -190,19 +319,45 @@ export function CombinedPreview({
         <div className="action-buttons">
           <button 
             onClick={handleCopyToClipboard}
-            disabled={validOffers.length === 0}
-            className="action-button primary"
+            disabled={validOffers.length === 0 || copyButtonState !== 'idle'}
+            className={`action-button primary ${copyButtonState !== 'idle' ? copyButtonState : ''}`}
           >
-            📋 Copy to Clipboard
+            {(() => {
+              const content = getButtonContent(copyButtonState, 'Copy to Clipboard', '📋');
+              return `${content.icon} ${content.text}`;
+            })()}
           </button>
           <button 
             onClick={() => handleDownload()}
-            disabled={validOffers.length === 0}
-            className="action-button secondary"
+            disabled={validOffers.length === 0 || downloadButtonState !== 'idle'}
+            className={`action-button secondary ${downloadButtonState !== 'idle' ? downloadButtonState : ''}`}
           >
-            💾 Download .offer File
+            {(() => {
+              const content = getButtonContent(downloadButtonState, 'Download .offer File', '💾');
+              return `${content.icon} ${content.text}`;
+            })()}
           </button>
         </div>
+        
+        {currentCombinedOffer && (
+          <div className="combined-offer-output">
+            <label htmlFor="combined-offer-text" className="combined-offer-label">
+              Combined Offer String:
+            </label>
+            <input
+              id="combined-offer-text"
+              type="text"
+              value={currentCombinedOffer}
+              readOnly
+              className="combined-offer-textbox"
+              placeholder="Combined offer will appear here..."
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+            />
+            <p className="combined-offer-hint">
+              Click the text field above to select all and copy manually if needed
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

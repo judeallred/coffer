@@ -9,6 +9,7 @@ interface OfferInputProps {
   onUpdateContent: (content: string) => void;
   onValidationResult: (isValid: boolean, error?: string, parsedData?: OfferData) => void;
   onLogError: (message: string, type?: 'error' | 'warning' | 'info') => void;
+  onDelete?: (id: string) => void;
 }
 
 export function OfferInput({ 
@@ -16,7 +17,8 @@ export function OfferInput({
   index, 
   onUpdateContent, 
   onValidationResult, 
-  onLogError 
+  onLogError,
+  onDelete 
 }: OfferInputProps): JSX.Element {
   const [isValidating, setIsValidating] = useState(false);
   const [validationTimeout, setValidationTimeout] = useState<number | null>(null);
@@ -85,27 +87,40 @@ export function OfferInput({
   }, [validationTimeout]);
 
   const { status, icon, className } = getStatusIndicator();
+  const isReadOnly = offer.isValid && offer.content.trim() !== '';
 
   return (
     <div className="offer-input-container">
-      <div className="offer-input-field">
+      <div className="offer-input-wrapper">
         <label htmlFor={`offer-${offer.id}`} className="offer-input-label">
           Offer {index}
         </label>
-        <textarea
+        <input
+          type="text"
           id={`offer-${offer.id}`}
           value={offer.content}
           onChange={handleInputChange}
           placeholder="Paste your Chia offer string here..."
-          className={`offer-input-textarea ${
+          className={`offer-input-text ${
             offer.error ? 'has-error' : 
             offer.isValid && offer.content.trim() ? 'is-valid' : ''
-          }`}
+          } ${isReadOnly ? 'read-only' : ''}`}
           disabled={isValidating}
+          readOnly={isReadOnly}
         />
         <div className={`offer-status-indicator ${className}`}>
           {icon}
         </div>
+        {isReadOnly && onDelete && (
+          <button
+            onClick={() => onDelete(offer.id)}
+            className="offer-delete-button"
+            title="Delete this offer"
+            type="button"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {offer.error && <ErrorBox message={offer.error} />}

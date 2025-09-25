@@ -5,6 +5,7 @@ interface OfferInputsProps {
   offers: Offer[];
   onUpdateOffer: (id: string, content: string) => void;
   onLogError: (message: string, type?: 'error' | 'warning' | 'info') => void;
+  onDeleteOffer: (id: string) => void;
   setOffers: (updater: (prev: Offer[]) => Offer[]) => void;
 }
 
@@ -12,6 +13,7 @@ export function OfferInputs({
   offers, 
   onUpdateOffer, 
   onLogError, 
+  onDeleteOffer,
   setOffers 
 }: OfferInputsProps): JSX.Element {
   
@@ -32,7 +34,7 @@ export function OfferInputs({
       <div>
         <h2 className="offer-inputs-title">Chia Offers</h2>
         <p className="offer-inputs-description">
-          Paste your Chia offer strings below. The app will automatically validate each offer and combine them into a single offer.
+          Paste your Chia offer strings below. Start with 2 offers, and additional fields will appear as needed. The app will automatically validate each offer and combine them into a single offer.
         </p>
       </div>
       
@@ -47,6 +49,7 @@ export function OfferInputs({
               handleOfferValidation(offer.id, isValid, error, parsedData)
             }
             onLogError={onLogError}
+            onDelete={onDeleteOffer}
           />
         ))}
       </div>

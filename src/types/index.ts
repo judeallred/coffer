@@ -4,6 +4,10 @@ export interface AssetData {
   amount: string;
   asset: string;
   icon?: string;
+  isNFT?: boolean;
+  nftId?: string;
+  nftName?: string;
+  nftImageUrl?: string;
 }
 
 export interface OfferData {
