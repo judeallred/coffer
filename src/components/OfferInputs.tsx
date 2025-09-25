@@ -1,31 +1,5 @@
-import styled from 'styled-components';
 import type { Offer, OfferData } from '../types/index.ts';
 import { OfferInput } from './OfferInput.tsx';
-
-const Container = styled.section`
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-`;
-
-const Title = styled.h2`
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin: 0;
-`;
-
-const Description = styled.p`
-  color: var(--color-text-light);
-  margin: var(--spacing-sm) 0 0 0;
-  line-height: 1.5;
-`;
-
-const InputList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-`;
 
 interface OfferInputsProps {
   offers: Offer[];
@@ -54,15 +28,15 @@ export function OfferInputs({
   };
 
   return (
-    <Container>
+    <section className="offer-inputs-container">
       <div>
-        <Title>Chia Offers</Title>
-        <Description>
+        <h2 className="offer-inputs-title">Chia Offers</h2>
+        <p className="offer-inputs-description">
           Paste your Chia offer strings below. The app will automatically validate each offer and combine them into a single offer.
-        </Description>
+        </p>
       </div>
       
-      <InputList>
+      <div className="offer-inputs-list">
         {offers.map((offer, index) => (
           <OfferInput
             key={offer.id}
@@ -75,7 +49,7 @@ export function OfferInputs({
             onLogError={onLogError}
           />
         ))}
-      </InputList>
-    </Container>
+      </div>
+    </section>
   );
 }

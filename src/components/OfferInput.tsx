@@ -1,106 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
-import styled from 'styled-components';
 import type { Offer, OfferData } from '../types/index.ts';
 import { OfferPreview } from './OfferPreview.tsx';
 import { ErrorBox } from './ErrorBox.tsx';
-
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-`;
-
-const InputContainer = styled.div`
-  position: relative;
-`;
-
-const Label = styled.label`
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--color-text);
-  margin-bottom: var(--spacing-sm);
-`;
-
-const TextArea = styled.textarea<{ $isValid?: boolean; $hasError?: boolean }>`
-  width: 100%;
-  min-height: 120px;
-  padding: var(--spacing-md);
-  border: 2px solid ${props => 
-    props.$hasError ? 'var(--color-error)' : 
-    props.$isValid ? 'var(--color-success)' : 
-    'var(--color-border)'
-  };
-  border-radius: var(--radius-md);
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-  font-size: 0.875rem;
-  line-height: 1.4;
-  resize: vertical;
-  background-color: var(--color-surface);
-  color: var(--color-text);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
-  &:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-  }
-
-  &::placeholder {
-    color: var(--color-text-light);
-    opacity: 0.8;
-  }
-
-  &:disabled {
-    background-color: var(--color-background);
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-`;
-
-const StatusIndicator = styled.div<{ $status: 'idle' | 'validating' | 'valid' | 'error' }>`
-  position: absolute;
-  top: var(--spacing-md);
-  right: var(--spacing-md);
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  
-  ${props => {
-    switch (props.$status) {
-      case 'validating':
-        return `
-          background-color: var(--color-warning);
-          color: white;
-          animation: pulse 2s infinite;
-        `;
-      case 'valid':
-        return `
-          background-color: var(--color-success);
-          color: white;
-        `;
-      case 'error':
-        return `
-          background-color: var(--color-error);
-          color: white;
-        `;
-      default:
-        return `
-          background-color: var(--color-border);
-          color: var(--color-text-light);
-        `;
-    }
-  }}
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-`;
 
 interface OfferInputProps {
   offer: Offer;
@@ -120,11 +21,11 @@ export function OfferInput({
   const [isValidating, setIsValidating] = useState(false);
   const [validationTimeout, setValidationTimeout] = useState<number | null>(null);
 
-  const getStatusIndicator = (): { status: 'idle' | 'validating' | 'valid' | 'error'; icon: string } => {
-    if (isValidating) return { status: 'validating', icon: '⏳' };
-    if (offer.error) return { status: 'error', icon: '✗' };
-    if (offer.isValid && offer.content.trim()) return { status: 'valid', icon: '✓' };
-    return { status: 'idle', icon: index.toString() };
+  const getStatusIndicator = (): { status: 'idle' | 'validating' | 'valid' | 'error'; icon: string; className: string } => {
+    if (isValidating) return { status: 'validating', icon: '⏳', className: 'status-validating' };
+    if (offer.error) return { status: 'error', icon: '✗', className: 'status-error' };
+    if (offer.isValid && offer.content.trim()) return { status: 'valid', icon: '✓', className: 'status-valid' };
+    return { status: 'idle', icon: index.toString(), className: 'status-idle' };
   };
 
   const validateOffer = async (content: string): Promise<void> => {
@@ -183,33 +84,35 @@ export function OfferInput({
     };
   }, [validationTimeout]);
 
-  const { status, icon } = getStatusIndicator();
+  const { status, icon, className } = getStatusIndicator();
 
   return (
-    <Container>
-      <InputContainer>
-        <Label htmlFor={`offer-${offer.id}`}>
+    <div className="offer-input-container">
+      <div className="offer-input-field">
+        <label htmlFor={`offer-${offer.id}`} className="offer-input-label">
           Offer {index}
-        </Label>
-        <TextArea
+        </label>
+        <textarea
           id={`offer-${offer.id}`}
           value={offer.content}
           onChange={handleInputChange}
           placeholder="Paste your Chia offer string here..."
-          $isValid={offer.isValid && offer.content.trim() !== ''}
-          $hasError={!!offer.error}
+          className={`offer-input-textarea ${
+            offer.error ? 'has-error' : 
+            offer.isValid && offer.content.trim() ? 'is-valid' : ''
+          }`}
           disabled={isValidating}
         />
-        <StatusIndicator $status={status}>
+        <div className={`offer-status-indicator ${className}`}>
           {icon}
-        </StatusIndicator>
-      </InputContainer>
+        </div>
+      </div>
 
       {offer.error && <ErrorBox message={offer.error} />}
       
       {offer.isValid && offer.parsedData && (
         <OfferPreview data={offer.parsedData} />
       )}
-    </Container>
+    </div>
   );
 }
