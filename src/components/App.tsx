@@ -1,35 +1,10 @@
 import { useState, useEffect } from 'preact/hooks';
-import styled from 'styled-components';
 import { Header } from './Header.tsx';
 import { OfferInputs } from './OfferInputs.tsx';
 import { CombinedPreview } from './CombinedPreview.tsx';
 import { ErrorLog } from './ErrorLog.tsx';
 import { ToastContainer } from './ToastContainer.tsx';
 import type { Offer, LogEntry } from '../types/index.ts';
-
-const AppContainer = styled.div`
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--color-background);
-`;
-
-const MainContent = styled.main`
-  flex: 1;
-  padding: var(--spacing-xl) 0;
-`;
-
-const ContentGrid = styled.div`
-  display: grid;
-  gap: var(--spacing-2xl);
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-md);
-
-  @media (min-width: 768px) {
-    padding: 0 var(--spacing-lg);
-  }
-`;
 
 
 export function App(): JSX.Element {
@@ -90,10 +65,10 @@ export function App(): JSX.Element {
   }, []);
 
   return (
-    <AppContainer>
+    <div className="app-container">
       <Header />
-      <MainContent>
-        <ContentGrid>
+      <main className="main-content">
+        <div className="content-grid">
           <OfferInputs 
             offers={offers}
             onUpdateOffer={updateOffer}
@@ -105,10 +80,10 @@ export function App(): JSX.Element {
             combinedOffer={combinedOffer}
             onLogError={logError}
           />
-        </ContentGrid>
-      </MainContent>
+        </div>
+      </main>
       <ErrorLog logs={errorLogs} />
       <ToastContainer />
-    </AppContainer>
+    </div>
   );
 }

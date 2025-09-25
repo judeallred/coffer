@@ -16,6 +16,7 @@
     "chia-wallet-sdk-wasm": "^0.29.0"
   },
   "devDependencies": {
-    "esbuild": "^0.19.12"
+    "esbuild": "^0.19.12",
+    "playwright": "^1.45.0"
   }
 }

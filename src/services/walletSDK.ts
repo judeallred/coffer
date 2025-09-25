@@ -4,7 +4,6 @@ import type { OfferData, AssetData } from '../types/index.ts';
 // WASM module will be loaded from npm package
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let wasmModule: any = null;
-let useMockMode = false;
 
 export interface WasmOfferResult {
   isValid: boolean;
@@ -26,9 +25,8 @@ export async function initWalletSDK(): Promise<void> {
     wasmModule = chiaSDK;
     console.log('✅ Chia Wallet SDK WASM initialized successfully from npm package');
   } catch (error) {
-    console.warn('⚠️  WASM not available, falling back to mock validation mode:', error instanceof Error ? error.message : String(error));
-    useMockMode = true;
-    console.log('🔧 Mock validation mode enabled - offers will be validated using simulated logic');
+    console.error('❌ CRITICAL: Failed to initialize Chia Wallet SDK WASM:', error instanceof Error ? error.message : String(error));
+    throw new Error(`WASM initialization failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -39,10 +37,6 @@ export async function validateOffer(offerString: string): Promise<WasmOfferResul
       isValid: false,
       error: 'Offer string is empty'
     };
-  }
-
-  if (useMockMode) {
-    return await validateOfferMock(offerString);
   }
 
   if (!wasmModule) {
@@ -94,10 +88,6 @@ export async function combineOffers(offers: string[]): Promise<{ success: boolea
         success: true,
         combinedOffer: validOffers[0]
       };
-    }
-
-    if (useMockMode) {
-      return await combineOffersMock(validOffers);
     }
 
     if (!wasmModule) {
@@ -155,83 +145,7 @@ export async function combineOffers(offers: string[]): Promise<{ success: boolea
   }
 }
 
-// Mock validation for development/fallback mode
-async function validateOfferMock(offerString: string): Promise<WasmOfferResult> {
-  // Simulate validation delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  const content = offerString.trim();
-  
-  // Basic validation - check if it looks like an offer string
-  if (content.length < 50) {
-    return {
-      isValid: false,
-      error: 'Offer string too short'
-    };
-  }
-  
-  if (!content.includes('offer1') && !content.startsWith('offer1')) {
-    return {
-      isValid: false,
-      error: 'Invalid offer format - must start with "offer1"'
-    };
-  }
-  
-  // Generate mock parsed data based on offer content
-  const mockData = generateMockOfferData(content);
-  
-  return {
-    isValid: true,
-    data: mockData
-  };
-}
 
-// Mock offer combining for development/fallback mode
-async function combineOffersMock(offers: string[]): Promise<{ success: boolean; combinedOffer?: string; error?: string }> {
-  // Simulate processing delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // For mock mode, create a combined offer string that represents the combination
-  const timestamp = Date.now();
-  const combinedOffer = `offer1combined_${timestamp}_${offers.length}offers_${simpleStringHash(offers.join(''))}`;
-  
-  return {
-    success: true,
-    combinedOffer
-  };
-}
-
-// Generate realistic mock offer data
-function generateMockOfferData(offerString: string): OfferData {
-  const requested: AssetData[] = [];
-  const offered: AssetData[] = [];
-  
-  // Simulate different offer types based on the offer string hash
-  const hash = simpleStringHash(offerString);
-  const offerType = hash % 4;
-  
-  switch (offerType) {
-    case 0: // XCH for USDS
-      offered.push({ amount: '0.1', asset: 'XCH' });
-      requested.push({ amount: '100', asset: 'USDS' });
-      break;
-    case 1: // CAT tokens
-      offered.push({ amount: '1000', asset: 'DBX' });
-      requested.push({ amount: '0.05', asset: 'XCH' });
-      break;
-    case 2: // NFT trade
-      offered.push({ amount: '1', asset: 'NFT-ABC123' });
-      requested.push({ amount: '0.25', asset: 'XCH' });
-      break;
-    case 3: // Multi-asset
-      offered.push({ amount: '500', asset: 'USDS' });
-      offered.push({ amount: '0.01', asset: 'XCH' });
-      requested.push({ amount: '50', asset: 'DBX' });
-      break;
-  }
-  
-  return { requested, offered };
-}
 
 // Parse a SpendBundle to extract offer information
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -268,25 +182,9 @@ function parseSpendBundle(spendBundle: any): OfferData {
   }
 }
 
-// Simple hash function for mock data generation
-function simpleStringHash(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash);
-}
-
 // Check if the WASM module is initialized
 export function isWalletSDKInitialized(): boolean {
-  return wasmModule !== null || useMockMode;
-}
-
-// Check if currently running in mock mode
-export function isUsingMockMode(): boolean {
-  return useMockMode;
+  return wasmModule !== null;
 }
 
 // Get SDK version info

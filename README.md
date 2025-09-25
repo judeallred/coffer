@@ -1,8 +1,12 @@
 # coffer
 A simple utility website for combining Chia offers
 
-# About
-Coffer is single page static website which uses the Chia Wallet SDK's WASM bindings to run chia wallet commands in the browser.
+## ⚠️ Current Status: Development in Progress
+
+**WASM Integration Issues**: The project is currently experiencing critical issues with WASM module loading in the browser. The `chia-wallet-sdk-wasm` npm package is not resolving properly despite import map configuration. This is a blocking issue for production deployment.
+
+## About
+Coffer is intended to be a single page static website which uses the Chia Wallet SDK's WASM bindings to run chia wallet commands in the browser.
 
 The site provides a column of text entries, where each row in the column is initially a blank field into which a Chia offer string can be pasted.
 
@@ -10,21 +14,24 @@ Below this is an offer preview which shows the inputs and outputs of the combine
 
 Below that are buttons that allow you to copy the combined offer string to your clipboard, or to download it as a files.
 
-To accomplish the combining of the offers, the site makes use of the `chia-wallet-sdk-wasm` npm package which provides WebAssembly bindings for the Chia Wallet SDK.
+To accomplish the combining of the offers, the site attempts to use the `chia-wallet-sdk-wasm` npm package which provides WebAssembly bindings for the Chia Wallet SDK.
 
 # Tech Stack
 This project is implemented as a single-page static client side website. It uses Deno, pnpm, and Preact.
 
 ## Build Process
 - Uses standard Deno + Preact project structure
-- Includes bundling and minification for production builds
-- Hot reloading for development
-- Uses `chia-wallet-sdk-wasm` npm package for WASM bindings
-- Simple build process with esbuild and Deno plugins
+- **Complex Development Server**: Custom TypeScript transpilation with esbuild to handle browser compatibility
+- **Import Resolution**: Custom import mapping system to resolve npm packages for browser usage
+- **Hot reloading for development**
+- **WASM Integration**: Attempts to use `chia-wallet-sdk-wasm` npm package (currently non-functional)
+- **Production builds**: esbuild with Deno plugins (has import resolution issues)
 
 ## Styling
-- Uses styled components for component styling
-- Minimalist design aesthetic with simple, effective styles
+- **CSS Classes**: Migrated from styled-components to standard CSS classes due to browser compatibility issues
+- **Global CSS**: Uses CSS custom properties (variables) for consistent theming
+- **Minimalist design aesthetic** with simple, effective styles
+- **Responsive design** for desktop and mobile
 
 ## Input Management
 - Initially displays 5 offer input rows
@@ -69,71 +76,103 @@ This project is implemented as a single-page static client side website. It uses
 
 # Implementation Status
 
-## ✅ All Core Features Complete
+## 🚧 Development Status: Partially Complete
 
-### Core Setup
+### ✅ Completed Components
+
+**Core Setup**
 - [x] Set up Deno + pnpm + Preact project structure with development configuration
-- [x] Configure styled components and establish minimalist design system
-- [x] Set up strong ESLint rules and strict TypeScript configuration
-- [x] Integrate chia-wallet-sdk-wasm npm package
+- [x] Set up strong ESLint rules and strict TypeScript configuration  
+- [x] Create complex development server with TypeScript transpilation
+- [x] Establish CSS-based styling system (migrated from styled-components)
 
-### UI Components
+**UI Components**
 - [x] Implement dynamic offer input rows (5 initial, auto-expand when filled)
 - [x] Create individual offer preview components (Dexie table-style)
 - [x] Build combined offer preview display (Dexie detail-style)
 - [x] Implement error boxes below inputs and accordion error log
 - [x] Implement toast system for user feedback
+- [x] Basic page layout and header components
 
-### Functionality
-- [x] Integrate wallet SDK for offer validation and parsing with WASM
-- [x] Add clipboard copy and .offer file download functionality
-- [x] Implement real offer combining logic using wallet SDK
-- [x] Real-time offer validation with detailed error messages
+**Testing Infrastructure**
+- [x] Write comprehensive integration tests for wallet SDK interactions (Deno environment)
+- [x] Create browser testing framework with Playwright
+- [x] Validate exact combined offer results with deterministic testing (server-side)
+- [x] Performance testing (2-5ms offer combining in Deno environment)
 
-### Quality & Testing
-- [x] Write comprehensive integration tests for all wallet SDK interactions
-- [x] Configure development environment with graceful fallbacks
-- [x] Validate exact combined offer results with deterministic testing
-- [x] Performance testing (2-5ms offer combining)
+### 🚨 Critical Issues
 
-## 🎯 Production Ready Features
+**WASM Integration Failures**
+- **❌ Browser Module Resolution**: `chia-wallet-sdk-wasm` npm package fails to load in browser
+- **❌ Import Map Issues**: Browser cannot resolve dynamic imports despite configuration
+- **❌ No Fallback**: Removed mock mode per requirements, so WASM failure = app failure
+- **❌ Production Non-Functional**: Application cannot initialize in browser environment
 
-### ⚡ Real WASM Integration
-- **✅ Fully Working**: Uses `chia-wallet-sdk-wasm` v0.29.0 npm package
-- **✅ Real Offer Combining**: Produces valid 1264-character combined offers
-- **✅ Lightning Fast**: Sub-5ms offer combining performance
-- **✅ Deterministic Results**: Same inputs always produce same output
-- **✅ Integration Tested**: Comprehensive test coverage with real offers
+**Development Server Complexity**
+- **⚠️ Complex Transpilation**: Custom TypeScript/JSX transformation required
+- **⚠️ Import Resolution**: Manual import mapping for npm packages
+- **⚠️ Styled Components Removal**: Had to eliminate styled-components due to browser errors
+- **⚠️ Build Issues**: Production build has unresolved import issues
 
-### 🛡️ Robust Architecture  
-- **Smart Fallback System**: Gracefully handles WASM unavailability with mock mode
-- **Type Safety**: Strict TypeScript with comprehensive type definitions
-- **Error Resilience**: Detailed error handling and user feedback
-- **Performance Optimized**: Minimal bundle size and fast load times
+### 🟡 Partially Working Features
 
-### 🚀 User Experience
-- **Intuitive Interface**: Clean, minimalist design inspired by Dexie
-- **Real-time Validation**: Immediate feedback on offer validity
-- **Visual Previews**: Clear display of offer contents and combined results  
-- **Multiple Export Options**: Clipboard copy and file download
-- **Responsive Design**: Works on desktop and mobile devices
+**Functionality** (Works in Deno, fails in browser)
+- [~] Integrate wallet SDK for offer validation and parsing with WASM
+- [~] Real offer combining logic using wallet SDK  
+- [~] Real-time offer validation with detailed error messages
+- [x] Add clipboard copy and .offer file download functionality (UI components exist)
+
+**User Experience** (UI exists, functionality broken)
+- [x] **Intuitive Interface**: Clean, minimalist design inspired by Dexie
+- [x] **Visual Previews**: UI components for offer contents and combined results  
+- [x] **Multiple Export Options**: UI for clipboard copy and file download
+- [x] **Responsive Design**: Works on desktop and mobile devices
+- [❌] **Real-time Validation**: Blocked by WASM loading issues
+- [❌] **Functional Interaction**: Core functionality non-operational in browser
 
 ## 🧪 Test Coverage
 
-The application includes comprehensive integration tests that validate:
-- **Real WASM SDK Integration**: Uses actual chia-wallet-sdk-wasm package
-- **Exact Output Validation**: Tests against known good combined offers
-- **Performance Requirements**: Sub-5ms offer combining
-- **Error Handling**: Graceful degradation and user feedback
-- **Cross-platform Compatibility**: Deno + npm package integration
+### ✅ Working Tests (Deno Environment)
+- **Real WASM SDK Integration**: Integration tests work perfectly in Deno environment
+- **Exact Output Validation**: Tests against known good combined offers with deterministic results
+- **Performance Requirements**: Consistently achieves sub-5ms offer combining
+- **Cross-platform Compatibility**: Deno + npm package integration works server-side
 
-**Example Test Results:**
+**Example Test Results (Deno):**
 ```
 ✅ Success: true
 📏 Combined Offer Length: 1264 chars  
 ⏱️ Processing Time: 2.31ms
 🔍 Validation: Exact match with expected result
 ```
+
+### ❌ Failing Tests (Browser Environment)
+- **Browser Loading Tests**: Fail due to WASM module resolution errors
+- **Functional Tests**: Cannot test functionality as WASM initialization fails
+- **Error**: `Failed to resolve module specifier 'chia-wallet-sdk-wasm'`
+
+## 🚧 Current Development Challenges
+
+### Primary Blockers
+1. **WASM Module Resolution**: The `chia-wallet-sdk-wasm` npm package cannot be imported in the browser despite:
+   - Correct import map configuration (`"chia-wallet-sdk-wasm": "https://esm.sh/chia-wallet-sdk-wasm@0.29.0"`)
+   - Dynamic import transformation in dev server
+   - Multiple attempts at different CDN URLs and package configurations
+
+2. **Browser vs Deno Environment Gap**: Significant differences between server-side (working) and client-side (broken) environments
+
+3. **No Fallback Strategy**: Per requirements, WASM failures must be critical failures, not fallback to mock mode
+
+### Technical Debt
+1. **Complex Development Server**: The dev server has grown complex with TypeScript transpilation, import resolution, and styled-components mocking
+2. **Build System Issues**: Production builds have import resolution problems
+3. **Styling Migration**: Forced migration from styled-components to CSS classes due to browser compatibility
+
+### Next Steps Needed
+1. **Resolve WASM Loading**: Must solve the browser module resolution for `chia-wallet-sdk-wasm`
+2. **Simplify Build Process**: Consider alternative approaches to import resolution
+3. **Production Build**: Fix import issues in production builds
+4. **Browser Testing**: Once WASM loads, complete functional browser testing
 
 # Getting Started
 

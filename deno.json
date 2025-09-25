@@ -19,9 +19,11 @@
     "chia-wallet-sdk-wasm": "npm:chia-wallet-sdk-wasm@^0.29.0"
   },
   "tasks": {
-    "dev": "deno run --allow-net --allow-read --allow-write --watch dev.ts",
+    "dev": "deno run --allow-net --allow-read --allow-write --allow-env --allow-run --watch dev.ts",
     "build": "deno run --allow-all build.ts",
-    "test": "deno test --allow-all"
+    "test": "deno test --allow-all",
+    "test:browser": "deno test --allow-all tests/browser/",
+    "test:integration": "deno test --allow-all tests/integration/"
   },
   "fmt": {
     "useTabs": false,
