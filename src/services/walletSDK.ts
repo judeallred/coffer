@@ -159,30 +159,69 @@ function parseSpendBundle(spendBundle: any): OfferData {
   const offered: AssetData[] = [];
 
   try {
-    // TODO: Implement proper SpendBundle parsing using the WASM SDK
-    // For now, return mock data structure that matches expected format
-    // This will be replaced with real parsing logic using the SDK
+    console.log('🔍 Parsing SpendBundle with', spendBundle.coinSpends?.length || 0, 'coin spends');
     
-    // Mock parsing - in reality we'd analyze the spend bundle
-    // to determine what assets are being requested vs offered
-    if (spendBundle.coin_spends && spendBundle.coin_spends.length > 0) {
-      // This is simplified mock logic
-      // Real implementation would parse puzzle reveals and solutions
-      offered.push({
-        amount: '0.1',
-        asset: 'XCH'
-      });
-      
-      requested.push({
-        amount: '100',
-        asset: 'USDS'  
+    if (spendBundle.coinSpends && spendBundle.coinSpends.length > 0) {
+      spendBundle.coinSpends.forEach((coinSpend: any, index: number) => {
+        const coin = coinSpend.coin;
+        if (!coin) return;
+        
+        const amount = coin.amount;
+        if (typeof amount === 'bigint') {
+          const amountMojos = Number(amount);
+          console.log(`💰 Coin ${index + 1}: ${amountMojos} mojos`);
+          
+          // Skip zero-amount coins (likely settlement coins)
+          if (amountMojos === 0) {
+            console.log('  ⏭️ Skipping zero-amount coin (settlement)');
+            return;
+          }
+          
+          // Convert mojos to standard units
+          let assetAmount: string;
+          let assetType: string;
+          
+          // Check puzzle reveal length to guess asset type
+          const puzzleRevealLength = coinSpend.puzzleReveal?.length || 0;
+          console.log(`  🧩 Puzzle reveal length: ${puzzleRevealLength}`);
+          
+          if (puzzleRevealLength > 1000) {
+            // Long puzzle reveals usually indicate CAT tokens
+            assetType = 'CAT';
+            // For CATs, the amount is typically already in the token's base units
+            assetAmount = (amountMojos / 1000).toString(); // Assuming 3 decimal places for most CATs
+            console.log(`  🪙 Detected CAT token: ${assetAmount} CAT`);
+          } else {
+            // Shorter puzzles are typically XCH
+            assetType = 'XCH';
+            assetAmount = (amountMojos / 1_000_000_000_000).toString(); // Convert mojos to XCH
+            console.log(`  🌱 Detected XCH: ${assetAmount} XCH`);
+          }
+          
+          // For now, assume larger amounts are being offered, smaller are being requested
+          // This is a heuristic and might not always be accurate
+          if (amountMojos > 1_000_000) { // More than 0.000001 XCH
+            offered.push({
+              amount: assetAmount,
+              asset: assetType
+            });
+            console.log(`  📤 Added to offered: ${assetAmount} ${assetType}`);
+          } else {
+            requested.push({
+              amount: assetAmount,
+              asset: assetType
+            });
+            console.log(`  📥 Added to requested: ${assetAmount} ${assetType}`);
+          }
+        }
       });
     }
-
+    
+    console.log('✅ Parsed offer:', { requested, offered });
     return { requested, offered };
 
   } catch (error) {
-    console.error('Error parsing spend bundle:', error);
+    console.error('❌ Error parsing spend bundle:', error);
     return { requested: [], offered: [] };
   }
 }
