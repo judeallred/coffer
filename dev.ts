@@ -39,7 +39,7 @@ function getMimeType(pathname: string): string {
 const IMPORT_MAP: Record<string, string> = {
   'preact': 'https://esm.sh/preact@10.19.2',
   'preact/': 'https://esm.sh/preact@10.19.2/',
-  'chia-wallet-sdk-wasm': 'https://esm.sh/chia-wallet-sdk-wasm@0.29.0', // Convert npm: to esm.sh
+  'chia-wallet-sdk-wasm': '/wasm/chia_wallet_sdk_wasm.js', // Use local WASM files
 };
 
 // Transform bare imports to browser-compatible URLs

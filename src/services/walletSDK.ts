@@ -11,11 +11,16 @@ export interface WasmOfferResult {
   data?: OfferData;
 }
 
-// Initialize the WASM module from npm package
+// Initialize the WASM module from local files
 export async function initWalletSDK(): Promise<void> {
   try {
-    // Import the npm package - WASM is automatically initialized
+    // Import the local WASM module
     const chiaSDK = await import('chia-wallet-sdk-wasm');
+    
+    // Initialize WASM if needed
+    if (chiaSDK.default) {
+      await chiaSDK.default(); // Call the default init function
+    }
     
     // Set up error handling if available
     if (chiaSDK.setPanicHook) {
@@ -23,7 +28,7 @@ export async function initWalletSDK(): Promise<void> {
     }
     
     wasmModule = chiaSDK;
-    console.log('✅ Chia Wallet SDK WASM initialized successfully from npm package');
+    console.log('✅ Chia Wallet SDK WASM initialized successfully from local files');
   } catch (error) {
     console.error('❌ CRITICAL: Failed to initialize Chia Wallet SDK WASM:', error instanceof Error ? error.message : String(error));
     throw new Error(`WASM initialization failed: ${error instanceof Error ? error.message : String(error)}`);
