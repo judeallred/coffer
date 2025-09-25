@@ -137,23 +137,15 @@ export function OfferInput({
     onLogError(`Validating offer ${index}...`, 'info');
 
     try {
-      // TODO(#1): Integrate with chia-wallet-sdk WASM for actual validation
-      // For now, simulate validation
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Use Chia Wallet SDK WASM for real validation
+      const { validateOffer } = await import('../services/walletSDK.ts');
+      const result = await validateOffer(content);
       
-      // Mock validation - check if it looks like an offer string
-      const isValidFormat = content.includes('offer1') || content.length > 100;
-      
-      if (isValidFormat) {
-        // Mock parsed data
-        const mockParsedData = {
-          requested: [{ amount: '0.1', asset: 'XCH' }],
-          offered: [{ amount: '100', asset: 'USDS' }]
-        };
-        onValidationResult(true, undefined, mockParsedData);
+      if (result.isValid && result.data) {
+        onValidationResult(true, undefined, result.data);
         onLogError(`Offer ${index} validated successfully`, 'info');
       } else {
-        onValidationResult(false, 'Invalid offer format');
+        onValidationResult(false, result.error || 'Invalid offer format');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown validation error';

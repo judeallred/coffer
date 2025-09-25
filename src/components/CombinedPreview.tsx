@@ -210,7 +210,7 @@ const getAssetIcon = (asset: string): string => {
 
 export function CombinedPreview({ 
   offers, 
-  combinedOffer, 
+  combinedOffer: _combinedOffer, 
   onLogError 
 }: CombinedPreviewProps): JSX.Element {
   const [_isGenerating, _setIsGenerating] = useState(false);
@@ -231,26 +231,36 @@ export function CombinedPreview({
   });
 
   const handleCopyToClipboard = async (): Promise<void> => {
-    if (!combinedOffer) {
-      onLogError('No combined offer to copy', 'warning');
+    // First, generate the combined offer if not already done
+    const combined = await generateCombinedOffer();
+    if (!combined) {
+      onLogError('No valid offers to combine', 'warning');
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(combinedOffer);
+      await navigator.clipboard.writeText(combined);
       onLogError('Combined offer copied to clipboard', 'info');
+      
+      // Show toast notification
+      const { showToast } = await import('./ToastContainer.tsx');
+      showToast('Combined offer copied to clipboard!', 'success');
     } catch (_error) {
       onLogError('Failed to copy to clipboard', 'error');
+      const { showToast } = await import('./ToastContainer.tsx');
+      showToast('Failed to copy to clipboard', 'error');
     }
   };
 
-  const handleDownload = (): void => {
-    if (!combinedOffer) {
-      onLogError('No combined offer to download', 'warning');
+  const handleDownload = async (): Promise<void> => {
+    // First, generate the combined offer if not already done
+    const combined = await generateCombinedOffer();
+    if (!combined) {
+      onLogError('No valid offers to combine', 'warning');
       return;
     }
 
-    const blob = new Blob([combinedOffer], { type: 'text/plain' });
+    const blob = new Blob([combined], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -261,6 +271,32 @@ export function CombinedPreview({
     URL.revokeObjectURL(url);
 
     onLogError('Combined offer downloaded', 'info');
+    
+    // Show toast notification
+    const { showToast } = await import('./ToastContainer.tsx');
+    showToast('Combined offer downloaded successfully!', 'success');
+  };
+
+  const generateCombinedOffer = async (): Promise<string | null> => {
+    if (validOffers.length === 0) {
+      return null;
+    }
+
+    try {
+      const { combineOffers } = await import('../services/walletSDK.ts');
+      const offerStrings = validOffers.map(offer => offer.content);
+      const result = await combineOffers(offerStrings);
+      
+      if (result.success && result.combinedOffer) {
+        return result.combinedOffer;
+      } else {
+        onLogError(result.error || 'Failed to combine offers', 'error');
+        return null;
+      }
+    } catch (error) {
+      onLogError(`Error combining offers: ${error}`, 'error');
+      return null;
+    }
   };
 
   if (validOffers.length === 0) {
@@ -347,14 +383,14 @@ export function CombinedPreview({
         <ActionButtons>
           <Button 
             onClick={handleCopyToClipboard}
-            disabled={!combinedOffer}
+            disabled={validOffers.length === 0}
             $variant="primary"
           >
             📋 Copy to Clipboard
           </Button>
           <Button 
-            onClick={handleDownload}
-            disabled={!combinedOffer}
+            onClick={() => handleDownload()}
+            disabled={validOffers.length === 0}
             $variant="secondary"
           >
             💾 Download .offer File

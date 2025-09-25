@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import styled from 'styled-components';
 import { Header } from './Header.tsx';
 import { OfferInputs } from './OfferInputs.tsx';
@@ -68,6 +68,26 @@ export function App(): JSX.Element {
     };
     setErrorLogs(prev => [...prev, newLog]);
   };
+
+  // Initialize the Chia Wallet SDK WASM module
+  useEffect(() => {
+    const initSDK = async (): Promise<void> => {
+      try {
+        const { initWalletSDK, isUsingMockMode } = await import('../services/walletSDK.ts');
+        await initWalletSDK();
+        
+        if (isUsingMockMode()) {
+          logError('Running in mock validation mode - WASM not available', 'warning');
+        } else {
+          logError('Chia Wallet SDK WASM initialized successfully', 'info');
+        }
+      } catch (error) {
+        logError(`Failed to initialize Chia Wallet SDK: ${error}`, 'error');
+      }
+    };
+
+    initSDK();
+  }, []);
 
   return (
     <AppContainer>
