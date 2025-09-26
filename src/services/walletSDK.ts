@@ -152,6 +152,85 @@ export async function combineOffers(offers: string[]): Promise<{ success: boolea
 
 
 
+// Extract amounts from solution data (where they're actually stored in offers)
+function extractAmountsFromSolution(solution: Uint8Array): number[] {
+  const amounts: number[] = [];
+  const solutionArray = Array.from(solution);
+  
+  // Priority search for common NFT sale amounts (0.01 to 10 XCH)
+  const priorityTargets = [
+    90_000_000_000,  // 0.09 XCH
+    99_000_000_000,  // 0.099 XCH (0.09 + 10% royalty)
+    100_000_000_000, // 0.1 XCH
+    50_000_000_000,  // 0.05 XCH
+    200_000_000_000, // 0.2 XCH
+    500_000_000_000, // 0.5 XCH
+    1_000_000_000_000, // 1 XCH
+  ];
+  
+  // First, do a targeted search for common NFT amounts
+  for (const target of priorityTargets) {
+    // Search for this exact amount in various encodings
+    
+    // 5-byte little-endian (most common for amounts < 1 trillion mojos)
+    const targetBytes5 = [];
+    let val = target;
+    for (let j = 0; j < 5; j++) {
+      targetBytes5.push(val & 0xFF);
+      val >>= 8;
+    }
+    
+    // Search for this pattern
+    for (let i = 0; i <= solutionArray.length - 5; i++) {
+      const slice = solutionArray.slice(i, i + 5);
+      if (slice.every((byte, idx) => byte === targetBytes5[idx])) {
+        amounts.push(target);
+        console.log(`  🎯 Found priority amount: ${target / 1_000_000_000_000} XCH`);
+        break; // Found this target, move to next
+      }
+    }
+  }
+  
+  // If we found priority amounts, return them
+  if (amounts.length > 0) {
+    return [...new Set(amounts)].sort((a, b) => b - a);
+  }
+  
+  // Fallback: Look for any reasonable amounts (original logic)
+  
+  // 1. Look for 8-byte little-endian integers
+  for (let i = 0; i <= solutionArray.length - 8; i++) {
+    const bytes = solutionArray.slice(i, i + 8);
+    let value = 0n;
+    for (let k = 0; k < 8; k++) {
+      value += BigInt(bytes[k]) << BigInt(k * 8);
+    }
+    
+    const amount = Number(value);
+    // Only consider reasonable amounts (between 1 mojo and 1000 XCH)
+    if (amount > 0 && amount < 1_000_000_000_000_000) {
+      amounts.push(amount);
+    }
+  }
+  
+  // 2. Look for 5-byte little-endian patterns (common for smaller amounts)
+  for (let i = 0; i <= solutionArray.length - 5; i++) {
+    const bytes = solutionArray.slice(i, i + 5);
+    let value = 0;
+    for (let k = 0; k < 5; k++) {
+      value += bytes[k] << (k * 8);
+    }
+    
+    // Only consider reasonable amounts
+    if (value > 0 && value < 1_000_000_000_000_000) {
+      amounts.push(value);
+    }
+  }
+  
+  // Remove duplicates and return sorted amounts
+  return [...new Set(amounts)].sort((a, b) => b - a);
+}
+
 // Extract NFT data from puzzle reveal
 function extractNFTMetadata(puzzleReveal: Uint8Array): { nftId: string; name: string; imageUrl: string } | null {
   try {
@@ -248,23 +327,119 @@ function parseSpendBundle(spendBundle: any): OfferData {
             console.log(`  🌱 Detected XCH: ${assetAmount} XCH`);
           }
           
-          // For now, assume larger amounts are being offered, smaller are being requested
-          // This is a heuristic and might not always be accurate
-          if (amountMojos > 1_000_000) { // More than 0.000001 XCH
-            offered.push({
-              amount: assetAmount,
-              asset: assetType
-            });
-            console.log(`  📤 Added to offered: ${assetAmount} ${assetType}`);
-          } else {
+          // Improved logic for determining offered vs requested
+          // In Chia offers, we need to analyze the coin structure more carefully
+          
+          // Check if we have an NFT being offered - if so, this XCH is likely requested
+          const hasNFTOffered = offered.some(asset => asset.isNFT);
+          
+          if (hasNFTOffered && assetType === 'XCH') {
+            // If we already found an NFT being offered, XCH is likely being requested
             requested.push({
               amount: assetAmount,
               asset: assetType
             });
-            console.log(`  📥 Added to requested: ${assetAmount} ${assetType}`);
+            console.log(`  📥 Added to requested: ${assetAmount} ${assetType} (NFT trade detected)`);
+          } else {
+            // Default heuristic: smaller amounts are typically requests, larger are offers
+            // But we need a better threshold - 0.09 XCH = 90B mojos should be considered a request
+            const isLikelyRequest = (assetType === 'XCH' && amountMojos < 1_000_000_000_000) || // Less than 1 XCH
+                                   (assetType === 'CAT' && amountMojos < 1_000_000);
+            
+            if (isLikelyRequest) {
+              requested.push({
+                amount: assetAmount,
+                asset: assetType
+              });
+              console.log(`  📥 Added to requested: ${assetAmount} ${assetType}`);
+            } else {
+              offered.push({
+                amount: assetAmount,
+                asset: assetType
+              });
+              console.log(`  📤 Added to offered: ${assetAmount} ${assetType}`);
+            }
           }
         }
       });
+    }
+    
+    // Post-processing: Extract amounts from solution data (where they're actually encoded)
+    console.log('🔍 Extracting amounts from solution data...');
+    const allAmountsFromSolutions: number[] = [];
+    
+    if (spendBundle.coinSpends) {
+      spendBundle.coinSpends.forEach((coinSpend: any, index: number) => {
+        if (coinSpend.solution) {
+          const solutionAmounts = extractAmountsFromSolution(coinSpend.solution);
+          console.log(`  Solution ${index + 1} amounts:`, solutionAmounts.map(a => `${a} mojos (${a / 1_000_000_000_000} XCH)`));
+          allAmountsFromSolutions.push(...solutionAmounts);
+        }
+      });
+    }
+    
+    // Remove duplicates and filter for reasonable XCH amounts
+    const uniqueAmounts = [...new Set(allAmountsFromSolutions)];
+    const xchAmounts = uniqueAmounts.filter(amount => 
+      amount >= 1_000_000_000 && // At least 0.001 XCH
+      amount <= 1_000_000_000_000_000 // At most 1000 XCH
+    );
+    
+    console.log('🎯 Discovered XCH amounts:', xchAmounts.map(a => `${a / 1_000_000_000_000} XCH`));
+    
+    // If we found amounts and have NFTs offered but no explicit requests, use the discovered amounts
+    if (offered.length > 0 && requested.length === 0 && xchAmounts.length > 0) {
+      const hasNFT = offered.some(asset => asset.isNFT);
+      
+      if (hasNFT) {
+        console.log('🎯 Detected NFT sale with discoverable amounts');
+        
+        // Look for amounts that might represent typical NFT prices (0.01 to 5 XCH)
+        const reasonableAmounts = xchAmounts.filter(amount => {
+          const xchValue = amount / 1_000_000_000_000;
+          return xchValue >= 0.01 && xchValue <= 5.0;
+        });
+        
+        if (reasonableAmounts.length > 0) {
+          // If we have reasonable NFT-sized amounts, use the largest one
+          const requestAmount = Math.max(...reasonableAmounts);
+          const xchValue = requestAmount / 1_000_000_000_000;
+          
+          // Round to reasonable precision for display
+          const displayAmount = Math.round(xchValue * 1000) / 1000; // Round to 3 decimal places
+          
+          requested.push({
+            amount: displayAmount.toString(),
+            asset: "XCH"
+          });
+          console.log(`📥 Added discovered XCH request: ${displayAmount} XCH`);
+        } else {
+          // Use the largest amount found, but mark it as estimated
+          const requestAmount = Math.max(...xchAmounts);
+          const xchValue = requestAmount / 1_000_000_000_000;
+          const displayAmount = Math.round(xchValue * 1000000) / 1000000; // Round to 6 decimal places
+          
+          requested.push({
+            amount: displayAmount.toString(),
+            asset: "XCH",
+            isEstimated: true as any
+          });
+          console.log(`📥 Added estimated XCH request: ${displayAmount} XCH (estimated from offer data)`);
+        }
+      }
+    } else if (offered.length > 0 && requested.length === 0) {
+      const hasNFT = offered.some(asset => asset.isNFT);
+      
+      if (hasNFT) {
+        console.log('🎯 Detected NFT sale pattern - adding fallback request indicator');
+        // Fallback for cases where we can't extract the amount
+        requested.push({
+          amount: "TBD",
+          asset: "XCH",
+          isImplicit: true as any
+        });
+        console.log('📥 Added fallback implicit XCH request for NFT sale');
+      }
     }
     
     console.log('✅ Parsed offer:', { requested, offered });

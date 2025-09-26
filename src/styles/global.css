@@ -420,6 +420,16 @@ body {
   font-weight: 600;
 }
 
+/* NFT thumbnail in combined preview */
+.asset-nft-thumbnail {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid var(--color-border);
+}
+
 .asset-details {
   flex: 1;
 }
@@ -701,4 +711,32 @@ body {
 .regular-asset {
   display: inline-flex;
   align-items: center;
+}
+
+/* Implicit request styling */
+.implicit-request {
+  color: var(--color-warning);
+  font-style: italic;
+  display: inline-flex;
+  align-items: center;
+  background-color: #fef3cd;
+  border: 1px solid #f6e05e;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs);
+  font-size: 0.875rem;
+}
+
+.implicit-note {
+  font-size: 0.75em;
+  color: var(--color-text-light);
+  font-weight: normal;
+  margin-left: var(--spacing-xs);
+}
+
+/* Estimated amount styling */
+.estimated-note {
+  font-size: 0.75em;
+  color: var(--color-warning);
+  font-style: italic;
+  margin-left: var(--spacing-xs);
 }

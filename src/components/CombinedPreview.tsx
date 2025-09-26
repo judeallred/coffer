@@ -278,10 +278,40 @@ export function CombinedPreview({
               ) : (
                 combinedRequested.map((asset, index) => (
                   <div key={index} className="asset-item">
-                    <div className="asset-icon">{getAssetIcon(asset.asset)}</div>
+                    {asset.isNFT && asset.nftImageUrl ? (
+                      <img 
+                        src={asset.nftImageUrl} 
+                        alt={asset.nftName || asset.asset}
+                        className="asset-nft-thumbnail"
+                        onError={(e) => {
+                          // Fallback to generic icon if image fails to load
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const fallback = document.createElement('div');
+                          fallback.className = 'asset-icon';
+                          fallback.textContent = '🖼️';
+                          (e.target as HTMLImageElement).parentNode?.appendChild(fallback);
+                        }}
+                      />
+                    ) : (
+                      <div className="asset-icon">{getAssetIcon(asset.asset)}</div>
+                    )}
                     <div className="asset-details">
-                      <div className="asset-amount">{asset.amount}</div>
-                      <div className="asset-symbol">{asset.asset}</div>
+                      {asset.isNFT ? (
+                        <>
+                          <div className="asset-amount">{asset.nftName || asset.asset}</div>
+                          <div className="asset-symbol">NFT</div>
+                        </>
+                      ) : asset.amount === "TBD" && (asset as any).isImplicit ? (
+                        <>
+                          <div className="asset-amount">Payment in {asset.asset}</div>
+                          <div className="asset-symbol">(amount to be determined)</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="asset-amount">{asset.amount}</div>
+                          <div className="asset-symbol">{asset.asset}</div>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))
@@ -304,10 +334,40 @@ export function CombinedPreview({
               ) : (
                 combinedOffered.map((asset, index) => (
                   <div key={index} className="asset-item">
-                    <div className="asset-icon">{getAssetIcon(asset.asset)}</div>
+                    {asset.isNFT && asset.nftImageUrl ? (
+                      <img 
+                        src={asset.nftImageUrl} 
+                        alt={asset.nftName || asset.asset}
+                        className="asset-nft-thumbnail"
+                        onError={(e) => {
+                          // Fallback to generic icon if image fails to load
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const fallback = document.createElement('div');
+                          fallback.className = 'asset-icon';
+                          fallback.textContent = '🖼️';
+                          (e.target as HTMLImageElement).parentNode?.appendChild(fallback);
+                        }}
+                      />
+                    ) : (
+                      <div className="asset-icon">{getAssetIcon(asset.asset)}</div>
+                    )}
                     <div className="asset-details">
-                      <div className="asset-amount">{asset.amount}</div>
-                      <div className="asset-symbol">{asset.asset}</div>
+                      {asset.isNFT ? (
+                        <>
+                          <div className="asset-amount">{asset.nftName || asset.asset}</div>
+                          <div className="asset-symbol">NFT</div>
+                        </>
+                      ) : asset.amount === "TBD" && (asset as any).isImplicit ? (
+                        <>
+                          <div className="asset-amount">Payment in {asset.asset}</div>
+                          <div className="asset-symbol">(amount to be determined)</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="asset-amount">{asset.amount}</div>
+                          <div className="asset-symbol">{asset.asset}</div>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))

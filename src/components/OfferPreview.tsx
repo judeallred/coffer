@@ -36,11 +36,22 @@ export function OfferPreview({ data }: OfferPreviewProps): JSX.Element {
           </span>
         );
       } else {
-        return (
-          <span key={index} className="regular-asset">
-            {asset.amount} {asset.asset}
-          </span>
-        );
+        // Handle implicit requests (like NFT sales where amount isn't directly visible)
+        if (asset.amount === "TBD" && (asset as any).isImplicit) {
+          return (
+            <span key={index} className="implicit-request" title="Payment amount not directly visible in offer structure">
+              Payment in {asset.asset} <span className="implicit-note">(amount to be determined)</span>
+            </span>
+          );
+        } else {
+          // Regular asset display (including discovered amounts)
+          return (
+            <span key={index} className="regular-asset">
+              {asset.amount} {asset.asset}
+              {(asset as any).isEstimated && <span className="estimated-note" title="Amount estimated from offer data"> (est.)</span>}
+            </span>
+          );
+        }
       }
     });
   };
