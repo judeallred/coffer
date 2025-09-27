@@ -29,12 +29,10 @@ export function App(): JSX.Element {
 
   // Save offers to localStorage whenever offers change
   useEffect(() => {
-    if (offers.length > 0) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(offers));
-      } catch (error) {
-        logError('Failed to save offers to storage', 'warning');
-      }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(offers));
+    } catch (error) {
+      logError('Failed to save offers to storage', 'warning');
     }
   }, [offers]);
 

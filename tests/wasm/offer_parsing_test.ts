@@ -654,3 +654,70 @@ Deno.test("walletSDK should correctly parse DataLayer Minions multi-NFT bundle o
   console.log("   - XCH request detection in complex offers needs improvement");
   console.log("   - This test will need updates as parsing capabilities improve");
 });
+
+// New offer from user - let's analyze what it contains
+const NEW_OFFER_FROM_USER = "offer1qqr83wcuu2rykcmqvpswd5yura7tkadfa3evk9v05l09ja2y9r2cv7d0j0djlcud4kd6klmh0dxyetlvl6a702zlu73mft6fvalw43fnma80qr4md0pau0mps7rmhhgrqccxqvuykaf5w6ll68d8ld8kr7kl63mtllga5l7qdflhpcd7cp7dleuyw7kcm3kmueryvnwg85fvhwp7cp7wakkqhzwczhdmddjtts89c9luvpdlhsjtsr4t8k44h49ey0emzj6nmzmlttz97g6n7n2weajdedtvl09tn592q2ucyx7w3wuvqpn0trsjq0p343uu0nhe8yt40lr6vxewf804t08gevkea63qz5e4ttpfyawktjdjjlfany76dj4capuu7k093kcqzsysq9s88lcmla0hqlhlhkmnz05tamvhyl64mpua57mm3x27nmzteut8vhyu7070u879e08l7dm3xcmcq4d68n7lfl8xranyjxwp5qp5afs9hf7ytt9uzfve46h8mk0dlvt0x8vslx3ryx5qse9hlhlstqk0xahrsvw9xnauavkhr07wut4h0thnrzal0a8xz3mnk7dea50zrv5epa8u07q59jpwwh4s2fexh6vr36a5d7402gdkedceka7dvm0jhlaa82nhhev889zt325fwdmv8lc98mcuhhel49lh9trfflk2v86ewytucvjcm802ax5emf0ht70e6y2eaqhlluhjp4xvl2lcq5zradl38xmpqdgjvytkx4e4vqeczag60uw8ns6a47qmdh7g6dh7gcdhlgud87cds68rpu0t3gudh7ga379rwcpuhfh6tlvckx76xkm67jzcns5sj59mk9p8tku0ay76vawlmqwsu49v4xs9yqct6sk2ynsrp029g6l6x0kn77yvp5hjp4zys653k8wsl385eujazzg8n7q6klkdkldzufk8vmdxuxrye0s2eckdhfpte7ymg8zlatwpss6yxl38l2erdlnj5p4z8gwq6rgn9e8egansdqy2skrtldx0la9mkun0xte73sgl3f9sur87jtu85sp358xhhmmnmjas2tq5gw8949e9ljqksxg8gsu9fmq49uand7nqk0u64h0t7nmzq4map4ctxx83w3y6tnvu3dara86u4whzcayj4vmwnlxenaplrqqqj3vttczyp63h";
+
+Deno.test("walletSDK should parse new offer from user", async () => {
+  console.log("🔍 Analyzing new offer from user...");
+  console.log("📏 Offer length:", NEW_OFFER_FROM_USER.length);
+  
+  await initWalletSDK();
+  
+  const result = await validateOffer(NEW_OFFER_FROM_USER);
+  
+  console.log("📊 New offer parsing results:");
+  console.log("  Valid:", result.isValid);
+  if (!result.isValid) {
+    console.log("  Error:", result.error);
+  }
+  
+  if (result.data) {
+    console.log("  Requested:", result.data.requested?.map(r => `${r.amount} ${r.asset}${r.assetId ? ` (${r.assetId.substring(0,8)}...)` : ''}`));
+    console.log("  Offered:", result.data.offered?.map(o => 
+      o.isNFT ? `${o.nftName || 'NFT'} (${o.nftId?.substring(0,8) || 'unknown'}...)` : `${o.amount} ${o.asset}${o.assetId ? ` (${o.assetId.substring(0,8)}...)` : ''}`
+    ));
+    
+    // Analyze the assets detected
+    const requestedAssets = result.data.requested || [];
+    const offeredAssets = result.data.offered || [];
+    
+    console.log("🎯 Asset analysis:");
+    console.log(`  - Total requested: ${requestedAssets.length}`);
+    console.log(`  - Total offered: ${offeredAssets.length}`);
+    
+    const xchRequested = requestedAssets.filter(asset => asset.asset === 'XCH');
+    const catRequested = requestedAssets.filter(asset => asset.asset !== 'XCH' && !asset.isNFT);
+    const nftRequested = requestedAssets.filter(asset => asset.isNFT);
+    
+    const xchOffered = offeredAssets.filter(asset => asset.asset === 'XCH');
+    const catOffered = offeredAssets.filter(asset => asset.asset !== 'XCH' && !asset.isNFT);
+    const nftOffered = offeredAssets.filter(asset => asset.isNFT);
+    
+    console.log("📈 Breakdown:");
+    console.log(`  Requested - XCH: ${xchRequested.length}, CATs: ${catRequested.length}, NFTs: ${nftRequested.length}`);
+    console.log(`  Offered - XCH: ${xchOffered.length}, CATs: ${catOffered.length}, NFTs: ${nftOffered.length}`);
+    
+    // Look for known patterns
+    const hasWUSDCOffered = offeredAssets.some(asset => 
+      asset.asset === 'wUSDC.b' || asset.assetId === 'fa4a180ac326e67ea289b869e3448256f6af05721f7cf934cb9901baa6b7a99d'
+    );
+    
+    const hasSmallXCHRequest = requestedAssets.some(asset => 
+      asset.asset === 'XCH' && parseFloat(asset.amount) < 1
+    );
+    
+    console.log("🔍 Pattern recognition:");
+    console.log(`  - wUSDC.b offered: ${hasWUSDCOffered}`);
+    console.log(`  - Small XCH request: ${hasSmallXCHRequest}`);
+    
+    if (hasWUSDCOffered && hasSmallXCHRequest) {
+      console.log("🎯 This appears to be a wUSDC.b ↔ XCH trade offer!");
+    }
+  }
+  
+  // The offer should be valid regardless of what it contains
+  assertEquals(result.isValid, true, "New offer should be valid");
+  
+  console.log("✅ New offer analysis completed");
+});
