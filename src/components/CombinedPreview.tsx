@@ -7,6 +7,7 @@ interface CombinedPreviewProps {
   offers: Offer[];
   combinedOffer: string;
   onLogError: (message: string, type?: 'error' | 'warning' | 'info') => void;
+  onCombinedOfferUpdate?: (combinedOffer: string) => void;
 }
 
 const getAssetIcon = (asset: string): string => {
@@ -20,7 +21,8 @@ const getAssetIcon = (asset: string): string => {
 export function CombinedPreview({ 
   offers, 
   combinedOffer: _combinedOffer, 
-  onLogError 
+  onLogError,
+  onCombinedOfferUpdate
 }: CombinedPreviewProps): JSX.Element {
   const [_isGenerating, _setIsGenerating] = useState(false);
   const [copyButtonState, setCopyButtonState] = useState<ButtonState>('idle');
@@ -47,13 +49,16 @@ export function CombinedPreview({
     const updateCombinedOffer = async () => {
       if (validOffers.length > 0) {
         const combined = await generateCombinedOffer();
-        setCurrentCombinedOffer(combined || '');
+        const combinedString = combined || '';
+        setCurrentCombinedOffer(combinedString);
+        onCombinedOfferUpdate?.(combinedString);
       } else {
         setCurrentCombinedOffer('');
+        onCombinedOfferUpdate?.('');
       }
     };
     updateCombinedOffer();
-  }, [validOffers.length, validOffers.map(o => o.content).join(',')]);
+  }, [validOffers.length, validOffers.map(o => o.content).join(','), onCombinedOfferUpdate]);
   
   // Combine all requested/offered assets from valid offers
   const combinedRequested: AssetData[] = [];

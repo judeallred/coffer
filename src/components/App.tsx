@@ -3,45 +3,96 @@ import { Header } from './Header.tsx';
 import { OfferInputs } from './OfferInputs.tsx';
 import { CombinedPreview } from './CombinedPreview.tsx';
 import { ErrorLog } from './ErrorLog.tsx';
-import { ToastContainer } from './ToastContainer.tsx';
-import type { Offer, LogEntry } from '../types/index.ts';
+import { ToastContainer, showToast } from './ToastContainer.tsx';
+import type { Offer, LogEntry, OfferData } from '../types/index.ts';
 
+const STORAGE_KEY = 'coffer-offers';
 
 export function App(): JSX.Element {
-  const [offers, setOffers] = useState<Offer[]>([
-    { id: '1', content: '', isValid: false },
-    { id: '2', content: '', isValid: false },
-  ]);
-
-  const [combinedOffer, _setCombinedOffer] = useState<string>('');
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [combinedOffer, setCombinedOffer] = useState<string>('');
   const [errorLogs, setErrorLogs] = useState<LogEntry[]>([]);
 
-  const updateOffer = (id: string, content: string): void => {
-    setOffers(prev => prev.map(offer => 
-      offer.id === id 
-        ? { ...offer, content, isValid: false, error: undefined, parsedData: undefined }
-        : offer
-    ));
+  // Load offers from localStorage on startup
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsedOffers = JSON.parse(stored) as Offer[];
+        setOffers(parsedOffers);
+        logError(`Loaded ${parsedOffers.length} offers from storage`, 'info');
+      }
+    } catch (error) {
+      logError('Failed to load offers from storage', 'warning');
+    }
+  }, []);
 
-    // Auto-expand: if this is the last field and it has content, add a new field
-    const currentOffers = offers;
-    const lastOffer = currentOffers[currentOffers.length - 1];
-    if (lastOffer.id === id && content.trim() !== '') {
-      const newId = String(currentOffers.length + 1);
-      setOffers(prev => [...prev, { id: newId, content: '', isValid: false }]);
+  // Save offers to localStorage whenever offers change
+  useEffect(() => {
+    if (offers.length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(offers));
+      } catch (error) {
+        logError('Failed to save offers to storage', 'warning');
+      }
+    }
+  }, [offers]);
+
+  const validateOffer = async (content: string): Promise<{ isValid: boolean; error?: string; parsedData?: OfferData }> => {
+    try {
+      const { validateOffer: validateOfferSDK } = await import('../services/walletSDK.ts');
+      const result = await validateOfferSDK(content);
+      
+      if (result.isValid && result.data) {
+        return {
+          isValid: true,
+          parsedData: result.data
+        };
+      } else {
+        return {
+          isValid: false,
+          error: result.error || 'Invalid offer'
+        };
+      }
+    } catch (error) {
+      return {
+        isValid: false,
+        error: error instanceof Error ? error.message : 'Validation failed'
+      };
+    }
+  };
+
+  const addOffer = async (content: string): Promise<void> => {
+    // Check for duplicate content
+    const isDuplicate = offers.some(offer => offer.content === content);
+    if (isDuplicate) {
+      throw new Error('This offer has already been added');
+    }
+
+    // Generate new ID
+    const newId = String(Date.now());
+    
+    // Validate the offer
+    const validation = await validateOffer(content);
+    
+    const newOffer: Offer = {
+      id: newId,
+      content,
+      isValid: validation.isValid,
+      error: validation.error,
+      parsedData: validation.parsedData
+    };
+
+    setOffers(prev => [...prev, newOffer]);
+
+    if (!validation.isValid && validation.error) {
+      logError(`Offer validation failed: ${validation.error}`, 'error');
     }
   };
 
   const deleteOffer = (id: string): void => {
-    setOffers(prev => {
-      const filtered = prev.filter(offer => offer.id !== id);
-      // Ensure we always have at least 2 offers
-      if (filtered.length < 2) {
-        const nextId = String(Math.max(...prev.map(o => parseInt(o.id) || 0)) + 1);
-        return [...filtered, { id: nextId, content: '', isValid: false }];
-      }
-      return filtered;
-    });
+    setOffers(prev => prev.filter(offer => offer.id !== id));
+    logError('Offer removed', 'info');
   };
 
   const logError = (message: string, type: 'error' | 'warning' | 'info' = 'error'): void => {
@@ -58,14 +109,10 @@ export function App(): JSX.Element {
   useEffect(() => {
     const initSDK = async (): Promise<void> => {
       try {
-        const { initWalletSDK, isUsingMockMode } = await import('../services/walletSDK.ts');
+        const { initWalletSDK } = await import('../services/walletSDK.ts');
         await initWalletSDK();
         
-        if (isUsingMockMode()) {
-          logError('Running in mock validation mode - WASM not available', 'warning');
-        } else {
-          logError('Chia Wallet SDK WASM initialized successfully', 'info');
-        }
+        logError('Chia Wallet SDK WASM initialized successfully', 'info');
       } catch (error) {
         logError(`Failed to initialize Chia Wallet SDK: ${error}`, 'error');
       }
@@ -74,6 +121,80 @@ export function App(): JSX.Element {
     initSDK();
   }, []);
 
+  // Global paste detection
+  useEffect(() => {
+    const handleGlobalPaste = async (e: ClipboardEvent): Promise<void> => {
+      try {
+        const clipboardData = e.clipboardData?.getData('text') || '';
+        const content = clipboardData.trim();
+        
+        if (content && content.startsWith('offer1')) {
+          e.preventDefault(); // Prevent default paste behavior
+          
+          // Check if this offer already exists
+          const isDuplicate = offers.some(offer => offer.content === content);
+          if (isDuplicate) {
+            showToast('This offer has already been added', 'warning');
+            logError('This offer has already been added', 'warning');
+            return;
+          }
+          
+          showToast('📋 Offer detected from paste - adding...', 'info');
+          logError('Offer detected from paste - adding...', 'info');
+          await addOffer(content);
+          showToast('✅ Offer added successfully!', 'success');
+        }
+      } catch (error) {
+        showToast(`Failed to process pasted content: ${error}`, 'error');
+        logError(`Failed to process pasted content: ${error}`, 'error');
+      }
+    };
+
+    document.addEventListener('paste', handleGlobalPaste);
+    
+    return () => {
+      document.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [offers]); // Re-register when offers change to check for duplicates
+
+  // Global copy handler for Ctrl+C
+  useEffect(() => {
+    const handleGlobalCopy = async (e: KeyboardEvent): Promise<void> => {
+      // Check if Ctrl+C (or Cmd+C on Mac) was pressed
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        // Only handle if we're not in an input field or textarea
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+          return; // Let normal copy behavior work in input fields
+        }
+
+        // If there's a text selection, let normal copy work
+        if (window.getSelection()?.toString().trim()) {
+          return;
+        }
+
+        if (combinedOffer && combinedOffer.trim()) {
+          try {
+            await navigator.clipboard.writeText(combinedOffer);
+            showToast('📋 Combined offer copied to clipboard!', 'success', 3000);
+            e.preventDefault(); // Prevent default copy behavior
+          } catch (error) {
+            showToast('Failed to copy combined offer to clipboard', 'error');
+            logError(`Failed to copy to clipboard: ${error}`, 'error');
+          }
+        } else {
+          showToast('No combined offer available to copy', 'warning');
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalCopy);
+    
+    return () => {
+      document.removeEventListener('keydown', handleGlobalCopy);
+    };
+  }, [combinedOffer]); // Re-register when combined offer changes
+
   return (
     <div className="app-container">
       <Header />
@@ -81,15 +202,13 @@ export function App(): JSX.Element {
         <div className="content-grid">
         <OfferInputs 
           offers={offers}
-          onUpdateOffer={updateOffer}
-          onLogError={logError}
           onDeleteOffer={deleteOffer}
-          setOffers={setOffers}
         />
           <CombinedPreview 
             offers={offers.filter(o => o.isValid)}
             combinedOffer={combinedOffer}
             onLogError={logError}
+            onCombinedOfferUpdate={setCombinedOffer}
           />
         </div>
       </main>
