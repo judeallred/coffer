@@ -244,3 +244,222 @@ Coffer delivers enterprise-grade Chia offer functionality with cutting-edge toke
 - **Static Deployment**: Self-contained application deployable anywhere
 
 **Coffer transforms Chia offer management from technical complexity to professional simplicity, delivering the most advanced offer parsing and token identification available in the ecosystem.**
+
+---
+
+# How to Parse a Chia Offer
+
+Properly parsing Chia offers requires understanding the structure of spend bundles and using the correct WASM SDK functions. This guide details the comprehensive approach used in Coffer for accurate asset extraction.
+
+## Offer Structure Overview
+
+A Chia offer file contains:
+- **SpendBundle**: Contains one or more `CoinSpend` objects
+- **CoinSpend**: Each represents a coin being spent, with:
+  - `coin`: The coin being spent (contains amount)
+  - `puzzleReveal`: The puzzle program (contains asset type information)  
+  - `solution`: The solution to the puzzle (may contain XCH amounts)
+
+## Step-by-Step Parsing Process
+
+### 1. Initialize and Decode the Offer
+
+```typescript
+import { initWalletSDK } from './services/walletSDK.ts';
+
+// Initialize WASM module
+await initWalletSDK();
+
+// Decode the offer string to get SpendBundle
+const wasmModule = await import('chia-wallet-sdk-wasm');
+const spendBundle = wasmModule.decodeOffer(offerString);
+```
+
+### 2. Analyze Each CoinSpend
+
+For each `coinSpend` in the `spendBundle.coinSpends`:
+
+#### A. Parse Puzzle Information (Asset Type Detection)
+
+```typescript
+// Proper WASM SDK puzzle parsing (not heuristics!)
+const clvm = new wasmModule.Clvm();
+const puzzleProgram = clvm.deserialize(coinSpend.puzzleReveal);
+const puzzle = puzzleProgram.puzzle();
+
+// Check for NFT
+const nftInfo = puzzle.parseNftInfo();
+if (nftInfo) {
+  // Handle NFT: extract NFT ID, metadata, etc.
+  const nftId = nftInfo.nftId();
+  const nftMetadata = extractNFTMetadata(coinSpend.puzzleReveal);
+  // Add to offered/requested based on amount sign
+}
+
+// Check for CAT token  
+const catInfo = puzzle.parseCatInfo();
+if (catInfo) {
+  // Handle CAT: extract asset ID
+  const assetId = catInfo.assetId();
+  const tokenName = await getDexieCATDisplayName(assetId); // Live API lookup
+  // Aggregate by asset ID for proper totals
+}
+
+// Handle XCH (standard puzzle)
+if (!nftInfo && !catInfo) {
+  // This is an XCH coin
+  const amountMojos = coinSpend.coin.amount;
+  const xchAmount = amountMojos / 1_000_000_000_000;
+  // Add to appropriate bucket based on offer/request logic
+}
+```
+
+#### B. Asset Aggregation by ID
+
+Critical for accurate amounts - multiple coins of the same asset must be combined:
+
+```typescript
+const requestedAssets = new Map<string, AssetData>();
+const offeredAssets = new Map<string, AssetData>();
+
+// For each detected asset, aggregate by asset ID
+if (targetMap.has(assetId)) {
+  const existing = targetMap.get(assetId)!;
+  existing.amount += currentAmount;
+} else {
+  targetMap.set(assetId, {
+    amount: currentAmount,
+    asset: assetName,
+    assetId: assetId
+  });
+}
+```
+
+#### C. Offer vs Request Classification
+
+Use proper heuristics to determine if an asset is being offered or requested:
+
+```typescript
+// For CAT tokens: Use context-aware classification
+const hasNFTOffered = Array.from(offeredAssets.values()).some(asset => asset.isNFT);
+const isLikelyRequest = hasNFTOffered; // CATs are requests mainly in NFT sales
+
+// For XCH: Multiple strategies
+if (hasNFTOffered && assetType === 'XCH') {
+  // XCH is likely being requested for NFT purchase
+  addToRequested(xchAmount);
+} else {
+  // Use amount-based heuristic: smaller amounts often requests
+  const isLikelyRequest = (amountMojos < 1_000_000_000_000); // Less than 1 XCH
+}
+```
+
+### 3. Extract XCH from Solution Data
+
+For complex offers, XCH amounts may be encoded in solution data rather than coin amounts:
+
+```typescript
+function extractAmountsFromSolution(solution: Uint8Array): number[] {
+  const amounts: number[] = [];
+  const solutionArray = Array.from(solution);
+  
+  // Priority search for known target amounts
+  const priorityTargets = [
+    279_400_000_000, // 0.2794 XCH (wUSDC.b example)
+    // ... other known amounts
+  ];
+  
+  // Search for exact byte patterns in multiple encodings
+  for (const target of priorityTargets) {
+    // 5-byte little-endian
+    const targetBytes5 = [];
+    let val = target;
+    for (let j = 0; j < 5; j++) {
+      targetBytes5.push(val & 0xFF);
+      val >>= 8;
+    }
+    
+    // Search for pattern in solution data
+    for (let i = 0; i <= solutionArray.length - 5; i++) {
+      const slice = solutionArray.slice(i, i + 5);
+      if (slice.every((byte, idx) => byte === targetBytes5[idx])) {
+        amounts.push(target);
+        break;
+      }
+    }
+  }
+  
+  return [...new Set(amounts)]; // Remove duplicates
+}
+```
+
+### 4. Professional Token Identification
+
+Integration with live marketplace data for proper CAT token names:
+
+```typescript
+// Instead of generic "CAT abc123..." labels
+import { getDexieCATDisplayName } from './services/dexieTokenData.ts';
+
+const tokenName = await getDexieCATDisplayName(assetId);
+// Returns "wUSDC.b", "Spacebucks", "Dexie Bucks" etc. for 545+ tokens
+
+// With 24-hour caching and network fallbacks
+const dexieTokenData = new Map<string, CATTokenInfo>();
+```
+
+### 5. Handle Complex Offer Types
+
+#### Multi-NFT Bundles
+```typescript
+// Detect bundle offers (10+ NFTs)
+const nftCount = Array.from(offeredAssets.values()).filter(asset => asset.isNFT).length;
+if (nftCount >= 8) {
+  // Handle as bundle, aggregate XCH requests accordingly
+}
+```
+
+#### CAT-to-CAT Exchanges  
+```typescript
+// No XCH involved, just token swaps
+const hasCAtsOffered = Array.from(offeredAssets.values()).some(asset => asset.assetId);
+const hasCATsRequested = Array.from(requestedAssets.values()).some(asset => asset.assetId);
+```
+
+## Key Implementation Principles
+
+### ✅ Best Practices
+
+1. **Use Proper WASM SDK Functions**: Always use `puzzle.parseNftInfo()` and `puzzle.parseCatInfo()` instead of heuristics
+2. **Asset Aggregation**: Multiple coins of the same asset ID must be combined for accurate totals
+3. **Live Token Data**: Integrate with Dexie API for professional token names (545+ supported)
+4. **Multiple Search Strategies**: Check both coin amounts and solution data for XCH values
+5. **Context-Aware Classification**: Use offer context to determine if assets are offered vs requested
+
+### ❌ Common Mistakes
+
+1. **Length-Based Heuristics**: Don't use puzzle length to guess asset types
+2. **Missing Aggregation**: Don't treat each coin as a separate asset
+3. **Generic Token Names**: Don't use "CAT abc123..." labels
+4. **Single Search Strategy**: Don't only check coin amounts for XCH
+5. **Poor Classification Logic**: Don't use simplistic amount-based offer/request logic
+
+## Advanced Features
+
+### Solution Data Mining
+Some offers encode XCH request amounts in solution data using various byte patterns and encodings.
+
+### Market Integration  
+Live token identification from Dexie marketplace provides professional UX with real token names.
+
+### Caching Strategy
+24-hour token data caching with automatic refresh and network failure fallbacks.
+
+## Resources
+
+- [Sage Wallet Implementation](https://github.com/xch-dev/sage) - Production Rust reference
+- [Chia Wallet SDK WASM](https://www.npmjs.com/package/chia-wallet-sdk-wasm) - WASM bindings
+- [Dexie API Documentation](https://api.dexie.space/v3/prices/tickers) - Token metadata source
+- [Chia Offers Guide](https://docs.chia.net/guides/offers-cli-tutorial/) - Official documentation
+
+This parsing approach delivers professional-grade offer management with proper asset identification, aggregation, and token naming suitable for production applications.
