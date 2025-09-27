@@ -77,7 +77,7 @@ export async function validateOffer(offerString: string): Promise<WasmOfferResul
   }
 }
 
-// Combine multiple offers into a single offer
+// Combine multiple offers into a single offer using proper SpendBundle aggregation
 export async function combineOffers(offers: string[]): Promise<{ success: boolean; combinedOffer?: string; error?: string }> {
   try {
     const validOffers = offers.filter(offer => offer.trim() !== '');
@@ -101,33 +101,90 @@ export async function combineOffers(offers: string[]): Promise<{ success: boolea
     }
 
     try {
+      console.log(`🔄 Combining ${validOffers.length} offers using proper SpendBundle aggregation...`);
+      
       // Parse all offers to SpendBundles
       const spendBundles = [];
-      for (const offerString of validOffers) {
+      for (let i = 0; i < validOffers.length; i++) {
+        const offerString = validOffers[i];
+        console.log(`📄 Parsing offer ${i + 1}/${validOffers.length}...`);
+        
         const spendBundle = wasmModule.decodeOffer(offerString.trim());
         if (!spendBundle) {
           return {
             success: false,
-            error: `Invalid offer format in one of the provided offers`
+            error: `Invalid offer format in offer ${i + 1}`
           };
         }
         spendBundles.push(spendBundle);
+        console.log(`✅ Offer ${i + 1} parsed: ${spendBundle.coinSpends?.length || 0} coin spends`);
       }
 
-      // For real offer combining, we would need to implement proper SpendBundle merging
-      // The SDK doesn't provide a direct combine function, so for now we'll
-      // return the first offer as a placeholder until proper merging is implemented
+      // Implement proper SpendBundle aggregation following Chia blockchain standards:
       
-      // TODO: Implement proper SpendBundle merging logic
-      // This would involve:
-      // 1. Merging coin_spends arrays from all SpendBundles
-      // 2. Aggregating signatures properly
-      // 3. Ensuring no conflicts in coin usage
+      // 1. Collect all coin spends from all offers
+      const allCoinSpends = [];
+      const allSignatures = [];
+      const usedCoins = new Set<string>();
       
-      const combinedSpendBundle = spendBundles[0]; // Simplified for now
+      for (let i = 0; i < spendBundles.length; i++) {
+        const bundle = spendBundles[i];
+        console.log(`🔍 Processing SpendBundle ${i + 1}...`);
+        
+        // Add all coin spends, checking for conflicts
+        if (bundle.coinSpends && Array.isArray(bundle.coinSpends)) {
+          for (const coinSpend of bundle.coinSpends) {
+            if (coinSpend.coin && coinSpend.coin.coinName) {
+              const coinName = Array.from(coinSpend.coin.coinName).join(',');
+              
+              if (usedCoins.has(coinName)) {
+                return {
+                  success: false,
+                  error: `Coin conflict detected: Same coin is being spent in multiple offers`
+                };
+              }
+              
+              usedCoins.add(coinName);
+              allCoinSpends.push(coinSpend);
+            } else {
+              allCoinSpends.push(coinSpend);
+            }
+          }
+        }
+        
+        // Collect signatures for aggregation
+        if (bundle.aggregatedSignature) {
+          allSignatures.push(bundle.aggregatedSignature);
+        }
+        
+        console.log(`✅ SpendBundle ${i + 1}: ${bundle.coinSpends?.length || 0} coin spends, signature included: ${!!bundle.aggregatedSignature}`);
+      }
       
-      // Encode back to offer string
+      console.log(`📊 Total coin spends to combine: ${allCoinSpends.length}`);
+      console.log(`📊 Total signatures to aggregate: ${allSignatures.length}`);
+      
+      // 2. Aggregate all signatures using BLS signature aggregation
+      let combinedSignature;
+      if (allSignatures.length === 0) {
+        // Use infinity signature if no signatures
+        combinedSignature = wasmModule.Signature.infinity();
+        console.log(`🔑 Using infinity signature (no signatures to aggregate)`);
+      } else if (allSignatures.length === 1) {
+        combinedSignature = allSignatures[0];
+        console.log(`🔑 Using single signature (no aggregation needed)`);
+      } else {
+        // Aggregate multiple signatures
+        combinedSignature = wasmModule.Signature.aggregate(allSignatures);
+        console.log(`🔑 Aggregated ${allSignatures.length} signatures successfully`);
+      }
+      
+      // 3. Create the combined SpendBundle
+      const combinedSpendBundle = new wasmModule.SpendBundle(allCoinSpends, combinedSignature);
+      console.log(`✅ Created combined SpendBundle with ${allCoinSpends.length} coin spends`);
+      
+      // 4. Encode back to offer string
       const combinedOffer = wasmModule.encodeOffer(combinedSpendBundle);
+      console.log(`✅ Encoded combined offer: ${combinedOffer.length} characters`);
       
       return {
         success: true,
@@ -135,7 +192,7 @@ export async function combineOffers(offers: string[]): Promise<{ success: boolea
       };
 
     } catch (error) {
-      console.error('WASM offer combining failed:', error);
+      console.error('❌ WASM offer combining failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to combine offers using WASM'
@@ -143,7 +200,7 @@ export async function combineOffers(offers: string[]): Promise<{ success: boolea
     }
 
   } catch (error) {
-    console.error('Error combining offers:', error);
+    console.error('❌ Error combining offers:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown combination error'
