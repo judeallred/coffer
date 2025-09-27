@@ -1,5 +1,6 @@
 // Chia Wallet SDK WASM integration for Coffer using npm package
 import type { OfferData, AssetData } from '../types/index.ts';
+import { getDexieCATDisplayName } from './dexieTokenData.ts';
 
 // WASM module will be loaded from npm package
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,7 +61,7 @@ export async function validateOffer(offerString: string): Promise<WasmOfferResul
     }
 
     // Parse the spend bundle to extract asset information
-    const parsedData = parseSpendBundle(spendBundle);
+    const parsedData = await parseSpendBundle(spendBundle);
     
     return {
       isValid: true,
@@ -265,16 +266,9 @@ function extractNFTMetadata(puzzleReveal: Uint8Array): { nftId: string; name: st
   }
 }
 
-// Known CAT token asset IDs to names mapping
-const KNOWN_CAT_TOKENS: { [assetId: string]: string } = {
-  'fa4a180ac326e67ea289b869e3448256f6af05721f7cf934cb9901baa6b7a99d': 'wUSDC.b',
-  'a628c1c2c6fcb74d53746157e438e108eab5c0bb3e5c80ff9b1910b3e4832913': 'SBX',
-  'e0005928763a7253a9c443d76837bdfab312382fc47cab85dad00be23ae4e82f': 'MBX'
-};
-
 // Parse a SpendBundle to extract offer information
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseSpendBundle(spendBundle: any): OfferData {
+async function parseSpendBundle(spendBundle: any): Promise<OfferData> {
   const requested: AssetData[] = [];
   const offered: AssetData[] = [];
   
@@ -286,9 +280,10 @@ function parseSpendBundle(spendBundle: any): OfferData {
     console.log('🔍 Parsing SpendBundle with', spendBundle.coinSpends?.length || 0, 'coin spends');
     
     if (spendBundle.coinSpends && spendBundle.coinSpends.length > 0) {
-      spendBundle.coinSpends.forEach((coinSpend: any, index: number) => {
+      for (let index = 0; index < spendBundle.coinSpends.length; index++) {
+        const coinSpend = spendBundle.coinSpends[index];
         const coin = coinSpend.coin;
-        if (!coin) return;
+        if (!coin) continue;
         
         const amount = coin.amount;
         const puzzleRevealLength = coinSpend.puzzleReveal?.length || 0;
@@ -324,7 +319,7 @@ function parseSpendBundle(spendBundle: any): OfferData {
                 nftImageUrl: "" // Would extract from metadata
               });
               console.log(`  🎨 Added NFT to offered: NFT ${launcherId.substring(0, 8)}...`);
-              return;
+              continue;
             }
           }
           
@@ -338,7 +333,7 @@ function parseSpendBundle(spendBundle: any): OfferData {
               const amountMojos = Number(amount);
               if (amountMojos === 0) {
                 console.log('  ⏭️ Skipping zero-amount CAT coin (settlement)');
-                return;
+                continue;
               }
               
               // Get asset ID from CAT info
@@ -349,8 +344,15 @@ function parseSpendBundle(spendBundle: any): OfferData {
               // CAT amounts are typically in native units (not mojos)
               const catAmountValue = amountMojos / 1000; // Most CATs use 3 decimal places
               
-              // Use known token name if available, otherwise use generic format
-              const tokenName = KNOWN_CAT_TOKENS[assetId] || `CAT ${assetId.substring(0, 8)}...`;
+              // Get token name from Dexie service
+              let tokenName: string;
+              try {
+                const dexieName = await getDexieCATDisplayName(assetId);
+                tokenName = dexieName || `CAT ${assetId.substring(0, 8)}...`;
+              } catch (error) {
+                console.warn(`Failed to get CAT name for ${assetId}:`, error);
+                tokenName = `CAT ${assetId.substring(0, 8)}...`;
+              }
               
               // Determine if offered or requested using improved heuristic logic
               const hasNFTOffered = Array.from(offeredAssets.values()).some(asset => asset.isNFT);
@@ -376,7 +378,7 @@ function parseSpendBundle(spendBundle: any): OfferData {
                 });
                 console.log(`  📥📤 Added CAT to ${direction}: ${catAmountValue} ${tokenName}`);
               }
-              return;
+              continue;
             }
           }
           
@@ -391,7 +393,7 @@ function parseSpendBundle(spendBundle: any): OfferData {
           // Skip zero-amount coins (likely settlement coins)
           if (amountMojos === 0) {
             console.log('  ⏭️ Skipping zero-amount coin (settlement)');
-            return;
+            continue;
           }
           
           // XCH parsing
@@ -441,7 +443,7 @@ function parseSpendBundle(spendBundle: any): OfferData {
             }
           }
         }
-      });
+      }
     }
     
     // Convert aggregated Maps back to arrays

@@ -47,7 +47,6 @@ Deno.test("Parse real Chia offer and extract offered/requested assets", async ()
   try {
     // Decode the offer using WASM
     const spendBundle = wasmModule.decodeOffer(REAL_OFFER);
-    
     assertExists(spendBundle, "SpendBundle should exist");
     console.log("✅ Successfully decoded offer");
     
