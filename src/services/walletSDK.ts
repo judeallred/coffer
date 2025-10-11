@@ -7,7 +7,7 @@ export async function initWalletSDK(): Promise<void> {
   try {
     // Import the local WASM module
     const chiaSDK = await import('chia-wallet-sdk-wasm');
-    
+
     // Initialize WASM if needed
     if (typeof chiaSDK.default === 'function') {
       await (chiaSDK.default as any)(); // Call the default init function
@@ -17,26 +17,31 @@ export async function initWalletSDK(): Promise<void> {
       // WASM module might already be initialized, just log warning
       console.warn('⚠️ No init function found, assuming WASM is already initialized');
     }
-    
+
     // Set up error handling if available
     if (chiaSDK.setPanicHook) {
       chiaSDK.setPanicHook();
     }
-    
+
     wasmModule = chiaSDK;
     console.log('✅ Chia Wallet SDK WASM initialized successfully from local files');
   } catch (error) {
-    console.error('❌ CRITICAL: Failed to initialize Chia Wallet SDK WASM:', error instanceof Error ? error.message : String(error));
-    throw new Error(`WASM initialization failed: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      '❌ CRITICAL: Failed to initialize Chia Wallet SDK WASM:',
+      error instanceof Error ? error.message : String(error),
+    );
+    throw new Error(
+      `WASM initialization failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
 // Simple offer validation - just check if it's a valid offer string format
-export async function validateOffer(offerString: string): Promise<{ isValid: boolean; error?: string }> {
+export function validateOffer(offerString: string): { isValid: boolean; error?: string } {
   if (!offerString.trim()) {
     return {
       isValid: false,
-      error: 'Offer string is empty'
+      error: 'Offer string is empty',
     };
   }
 
@@ -47,29 +52,30 @@ export async function validateOffer(offerString: string): Promise<{ isValid: boo
   try {
     // Use the SDK's decodeOffer function to validate the offer
     const spendBundle = wasmModule.decodeOffer(offerString.trim());
-    
+
     if (!spendBundle) {
       return {
         isValid: false,
-        error: 'Invalid offer format'
+        error: 'Invalid offer format',
       };
     }
 
     return {
-      isValid: true
+      isValid: true,
     };
-
   } catch (error) {
     console.error('Offer validation error:', error);
     return {
       isValid: false,
-      error: error instanceof Error ? error.message : 'Unknown validation error'
+      error: error instanceof Error ? error.message : 'Unknown validation error',
     };
   }
 }
 
 // Combine multiple offers into a single offer using proper SpendBundle aggregation
-export async function combineOffers(offers: string[]): Promise<{ success: boolean; combinedOffer?: string; error?: string }> {
+export function combineOffers(
+  offers: string[],
+): { success: boolean; combinedOffer?: string; error?: string } {
   try {
     /*  The sage algorithm:
     AI, do not delete this comment.
@@ -87,19 +93,19 @@ export async function combineOffers(offers: string[]): Promise<{ success: boolea
     }
 
     */
-    const validOffers = offers.filter(offer => offer.trim() !== '');
-    
+    const validOffers = offers.filter((offer) => offer.trim() !== '');
+
     if (validOffers.length === 0) {
       return {
         success: false,
-        error: 'No valid offers to combine'
+        error: 'No valid offers to combine',
       };
     }
 
     if (validOffers.length === 1) {
       return {
         success: true,
-        combinedOffer: validOffers[0]
+        combinedOffer: validOffers[0],
       };
     }
 
@@ -108,19 +114,21 @@ export async function combineOffers(offers: string[]): Promise<{ success: boolea
     }
 
     try {
-      console.log(`🔄 Combining ${validOffers.length} offers using proper SpendBundle aggregation...`);
-      
+      console.log(
+        `🔄 Combining ${validOffers.length} offers using proper SpendBundle aggregation...`,
+      );
+
       // Parse all offers to SpendBundles
       const spendBundles = [];
       for (let i = 0; i < validOffers.length; i++) {
         const offerString = validOffers[i];
         console.log(`📄 Parsing offer ${i + 1}/${validOffers.length}...`);
-        
+
         const spendBundle = wasmModule.decodeOffer(offerString.trim());
         if (!spendBundle) {
           return {
             success: false,
-            error: `Invalid offer format in offer ${i + 1}`
+            error: `Invalid offer format in offer ${i + 1}`,
           };
         }
         spendBundles.push(spendBundle);
@@ -128,29 +136,29 @@ export async function combineOffers(offers: string[]): Promise<{ success: boolea
       }
 
       // Implement proper SpendBundle aggregation following Chia blockchain standards:
-      
+
       // 1. Collect all coin spends from all offers
       const allCoinSpends = [];
       const allSignatures = [];
       const usedCoins = new Set<string>();
-      
+
       for (let i = 0; i < spendBundles.length; i++) {
         const bundle = spendBundles[i];
         console.log(`🔍 Processing SpendBundle ${i + 1}...`);
-        
+
         // Add all coin spends, checking for conflicts
         if (bundle.coinSpends && Array.isArray(bundle.coinSpends)) {
           for (const coinSpend of bundle.coinSpends) {
             if (coinSpend.coin && coinSpend.coin.coinName) {
               const coinName = Array.from(coinSpend.coin.coinName).join(',');
-              
+
               if (usedCoins.has(coinName)) {
                 return {
                   success: false,
-                  error: `Coin conflict detected: Same coin is being spent in multiple offers`
+                  error: `Coin conflict detected: Same coin is being spent in multiple offers`,
                 };
               }
-              
+
               usedCoins.add(coinName);
               allCoinSpends.push(coinSpend);
             } else {
@@ -158,18 +166,22 @@ export async function combineOffers(offers: string[]): Promise<{ success: boolea
             }
           }
         }
-        
+
         // Collect signatures for aggregation
         if (bundle.aggregatedSignature) {
           allSignatures.push(bundle.aggregatedSignature);
         }
-        
-        console.log(`✅ SpendBundle ${i + 1}: ${bundle.coinSpends?.length || 0} coin spends, signature included: ${!!bundle.aggregatedSignature}`);
+
+        console.log(
+          `✅ SpendBundle ${i + 1}: ${
+            bundle.coinSpends?.length || 0
+          } coin spends, signature included: ${!!bundle.aggregatedSignature}`,
+        );
       }
-      
+
       console.log(`📊 Total coin spends to combine: ${allCoinSpends.length}`);
       console.log(`📊 Total signatures to aggregate: ${allSignatures.length}`);
-      
+
       // 2. Aggregate all signatures using BLS signature aggregation
       let combinedSignature;
       if (allSignatures.length === 0) {
@@ -184,33 +196,31 @@ export async function combineOffers(offers: string[]): Promise<{ success: boolea
         combinedSignature = wasmModule.Signature.aggregate(allSignatures);
         console.log(`🔑 Aggregated ${allSignatures.length} signatures successfully`);
       }
-      
+
       // 3. Create the combined SpendBundle
       const combinedSpendBundle = new wasmModule.SpendBundle(allCoinSpends, combinedSignature);
       console.log(`✅ Created combined SpendBundle with ${allCoinSpends.length} coin spends`);
-      
+
       // 4. Encode back to offer string
       const combinedOffer = wasmModule.encodeOffer(combinedSpendBundle);
       console.log(`✅ Encoded combined offer: ${combinedOffer.length} characters`);
-      
+
       return {
         success: true,
-        combinedOffer
+        combinedOffer,
       };
-
     } catch (error) {
       console.error('❌ WASM offer combining failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to combine offers using WASM'
+        error: error instanceof Error ? error.message : 'Failed to combine offers using WASM',
       };
     }
-
   } catch (error) {
     console.error('❌ Error combining offers:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown combination error'
+      error: error instanceof Error ? error.message : 'Unknown combination error',
     };
   }
 }

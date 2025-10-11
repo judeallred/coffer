@@ -1,7 +1,6 @@
 #!/usr/bin/env -S deno run --allow-all
 
 import * as esbuild from 'npm:esbuild@0.19.12';
-import { denoPlugins } from 'jsr:@luca/esbuild-deno-loader@^0.10.3';
 
 console.log('🏗️  Building Coffer...');
 
@@ -12,10 +11,32 @@ try {
   // Directory already exists
 }
 
+// Create a simple plugin to handle external imports
+const externalImportPlugin: esbuild.Plugin = {
+  name: 'external-imports',
+  setup(build): void {
+    // Mark preact and styled-components as external
+    build.onResolve({ filter: /^preact/ }, (args) => {
+      return { path: args.path, external: true };
+    });
+    build.onResolve({ filter: /^styled-components/ }, (args) => {
+      return { path: args.path, external: true };
+    });
+    // Handle CSS imports - just skip them
+    build.onResolve({ filter: /\.css$/ }, (args) => {
+      return { path: args.path, external: true };
+    });
+    // Handle WASM files - mark as external
+    build.onResolve({ filter: /\.wasm$/ }, (args) => {
+      return { path: args.path, external: true };
+    });
+  },
+};
+
 // Build TypeScript/JSX bundle
 console.log('⚡ Building JavaScript bundle with npm packages...');
 const result = await esbuild.build({
-  plugins: [...denoPlugins()],
+  plugins: [externalImportPlugin],
   entryPoints: ['./src/main.tsx'],
   outdir: './dist',
   bundle: true,
@@ -23,10 +44,11 @@ const result = await esbuild.build({
   minify: true,
   sourcemap: true,
   target: ['chrome90', 'firefox88', 'safari14'],
-  jsxFactory: 'h',
-  jsxFragment: 'Fragment',
+  jsx: 'automatic',
+  jsxImportSource: 'preact',
   loader: {
-    '.css': 'text',
+    '.ts': 'ts',
+    '.tsx': 'tsx',
   },
 });
 
@@ -35,8 +57,35 @@ if (result.errors.length > 0) {
   Deno.exit(1);
 }
 
-// Copy HTML file
-await Deno.copyFile('./src/index.html', './dist/index.html');
+// Copy and modify HTML file to use built JS instead of source TS
+console.log('📋 Copying and modifying HTML...');
+let html = await Deno.readTextFile('./src/index.html');
+// Replace the source script reference with the built file
+html = html.replace('./main.tsx', './main.js');
+await Deno.writeTextFile('./dist/index.html', html);
+
+// Copy static assets
+console.log('📋 Copying static assets...');
+
+// Copy CSS
+try {
+  await Deno.mkdir('./dist/styles', { recursive: true });
+  await Deno.copyFile('./src/styles/global.css', './dist/styles/global.css');
+  console.log('  ✓ Copied CSS');
+} catch (error) {
+  console.warn('  ⚠ Failed to copy CSS:', error);
+}
+
+// Copy favicons
+const favicons = ['favicon.ico', 'favicon.svg', 'favicon-32x32.png'];
+for (const favicon of favicons) {
+  try {
+    await Deno.copyFile(`./src/${favicon}`, `./dist/${favicon}`);
+  } catch {
+    console.warn(`  ⚠ Failed to copy ${favicon}`);
+  }
+}
+console.log('  ✓ Copied favicons');
 
 console.log('✅ Build completed successfully!');
 console.log('📁 Output files in ./dist/');

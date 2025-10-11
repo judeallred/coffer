@@ -1,20 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Coffer - Combine Offers on the Chia Blockchain</title>
-  <meta name="description" content="A simple utility website for combining Chia offers">
-  
-  <!-- Favicon -->
-  <link rel="icon" type="image/x-icon" href="./favicon.ico">
-  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="apple-touch-icon" href="./favicon.svg">
-  
-  <link rel="stylesheet" href="./styles/global.css">
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="./main.tsx"></script>
-</body>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coffer - Combine Offers on the Chia Blockchain</title>
+    <meta name="description" content="A simple utility website for combining Chia offers">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="./favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <link rel="apple-touch-icon" href="./favicon.svg">
+
+    <link rel="stylesheet" href="./styles/global.css">
+
+    <!-- Import map for browser module resolution -->
+    <script type="importmap">
+      {
+        "imports": {
+          "preact": "https://esm.sh/preact@10.19.2",
+          "preact/": "https://esm.sh/preact@10.19.2/",
+          "styled-components": "https://esm.sh/styled-components@6.1.1"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
 </html>

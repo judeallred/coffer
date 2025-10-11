@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import type { Offer } from '../types/index.ts';
 
 interface SimpleCombinedOutputProps {
@@ -6,14 +6,14 @@ interface SimpleCombinedOutputProps {
   onLogError: (message: string, type?: 'error' | 'warning' | 'info') => void;
 }
 
-export function SimpleCombinedOutput({ 
+export function SimpleCombinedOutput({
   offers,
-  onLogError
+  onLogError,
 }: SimpleCombinedOutputProps): JSX.Element {
   const [combinedOffer, setCombinedOffer] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const validOffers = offers.filter(offer => offer.isValid && offer.content.trim());
+  const validOffers = offers.filter((offer) => offer.isValid && offer.content.trim());
 
   // Update combined offer when valid offers change
   useEffect(() => {
@@ -24,12 +24,12 @@ export function SimpleCombinedOutput({
       }
 
       setIsGenerating(true);
-      
+
       try {
         const { combineOffers } = await import('../services/walletSDK.ts');
-        const offerStrings = validOffers.map(offer => offer.content);
-        const result = await combineOffers(offerStrings);
-        
+        const offerStrings = validOffers.map((offer) => offer.content);
+        const result = combineOffers(offerStrings);
+
         if (result.success && result.combinedOffer) {
           setCombinedOffer(result.combinedOffer);
         } else {
@@ -45,7 +45,7 @@ export function SimpleCombinedOutput({
     };
 
     updateCombinedOffer();
-  }, [validOffers.length, validOffers.map(o => o.content).join(','), onLogError]);
+  }, [validOffers.length, validOffers.map((o) => o.content).join(','), onLogError]);
 
   const handleCopyToClipboard = async () => {
     if (!combinedOffer) return;
@@ -53,56 +53,55 @@ export function SimpleCombinedOutput({
     try {
       await navigator.clipboard.writeText(combinedOffer);
       onLogError('Combined offer copied to clipboard', 'info');
-      
+
       // Show toast notification
       const { showToast } = await import('./ToastContainer.tsx');
       showToast('Combined offer copied!', 'success');
     } catch (error) {
       onLogError(`Failed to copy to clipboard: ${error}`, 'error');
-      
+
       const { showToast } = await import('./ToastContainer.tsx');
       showToast('Copy failed - select text manually', 'error');
     }
   };
 
   return (
-    <div className="simple-combined-output">
-      <div className="output-header">
+    <div className='simple-combined-output'>
+      <div className='output-header'>
         <h3>Combined Offer</h3>
-        <div className="output-status">
-          {isGenerating ? (
-            <span className="generating">⏳ Generating...</span>
-          ) : validOffers.length > 0 ? (
-            <span className="ready">✅ Ready ({validOffers.length} offers)</span>
-          ) : (
-            <span className="empty">No valid offers</span>
-          )}
+        <div className='output-status'>
+          {isGenerating
+            ? <span className='generating'>⏳ Generating...</span>
+            : validOffers.length > 0
+            ? <span className='ready'>✅ Ready ({validOffers.length} offers)</span>
+            : <span className='empty'>No valid offers</span>}
         </div>
       </div>
-      
-      <div className="output-container">
-        <div className="output-field">
+
+      <div className='output-container'>
+        <div className='output-field'>
           <input
-            type="text"
+            type='text'
             value={combinedOffer}
             readOnly
-            className="combined-offer-input"
-            placeholder="Combined offer will appear here..."
+            className='combined-offer-input'
+            placeholder='Combined offer will appear here...'
             onClick={(e) => (e.target as HTMLInputElement).select()}
           />
           {combinedOffer && (
             <button
-              className="copy-button"
+              type='button'
+              className='copy-button'
               onClick={handleCopyToClipboard}
-              title="Copy to clipboard"
+              title='Copy to clipboard'
             >
               📋
             </button>
           )}
         </div>
-        
+
         {combinedOffer && (
-          <p className="output-hint">
+          <p className='output-hint'>
             Click the text field above to select all and copy manually if needed
           </p>
         )}
@@ -110,4 +109,3 @@ export function SimpleCombinedOutput({
     </div>
   );
 }
-

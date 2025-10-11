@@ -11,7 +11,7 @@ const Container = styled.section<{ $hasErrors: boolean }>`
   border-top: 1px solid var(--color-border);
   box-shadow: var(--shadow-lg);
   z-index: 1000;
-  transform: ${props => props.$hasErrors ? 'translateY(0)' : 'translateY(100%)'};
+  transform: ${(props) => props.$hasErrors ? 'translateY(0)' : 'translateY(100%)'};
   transition: transform 0.3s ease;
 `;
 
@@ -48,19 +48,27 @@ const StatusIndicator = styled.div<{ $type: 'error' | 'warning' | 'info' }>`
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: ${props => {
+  background-color: ${(props) => {
     switch (props.$type) {
-      case 'error': return 'var(--color-error)';
-      case 'warning': return 'var(--color-warning)';
-      case 'info': return 'var(--color-primary)';
-      default: return 'var(--color-secondary)';
+      case 'error':
+        return 'var(--color-error)';
+      case 'warning':
+        return 'var(--color-warning)';
+      case 'info':
+        return 'var(--color-primary)';
+      default:
+        return 'var(--color-secondary)';
     }
   }};
-  animation: ${props => props.$type === 'error' ? 'pulse 2s infinite' : 'none'};
+  animation: ${(props) => props.$type === 'error' ? 'pulse 2s infinite' : 'none'};
 
   @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
 `;
 
@@ -74,13 +82,13 @@ const LogCount = styled.span`
 `;
 
 const ExpandIcon = styled.span<{ $isExpanded: boolean }>`
-  transform: ${props => props.$isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'};
+  transform: ${(props) => props.$isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'};
   transition: transform 0.2s ease;
   font-size: 0.75rem;
 `;
 
 const LogContent = styled.div<{ $isExpanded: boolean }>`
-  max-height: ${props => props.$isExpanded ? '300px' : '0'};
+  max-height: ${(props) => props.$isExpanded ? '300px' : '0'};
   overflow-y: auto;
   transition: max-height 0.3s ease;
 `;
@@ -96,20 +104,28 @@ const LogEntry = styled.div<{ $type: 'error' | 'warning' | 'info' }>`
   padding: var(--spacing-sm);
   margin-bottom: var(--spacing-xs);
   border-radius: var(--radius-sm);
-  background-color: ${props => {
+  background-color: ${(props) => {
     switch (props.$type) {
-      case 'error': return '#fef2f2';
-      case 'warning': return '#fefbf2';
-      case 'info': return '#f0f9ff';
-      default: return 'var(--color-background)';
+      case 'error':
+        return '#fef2f2';
+      case 'warning':
+        return '#fefbf2';
+      case 'info':
+        return '#f0f9ff';
+      default:
+        return 'var(--color-background)';
     }
   }};
-  border-left: 3px solid ${props => {
+  border-left: 3px solid ${(props) => {
     switch (props.$type) {
-      case 'error': return 'var(--color-error)';
-      case 'warning': return 'var(--color-warning)';
-      case 'info': return 'var(--color-primary)';
-      default: return 'var(--color-secondary)';
+      case 'error':
+        return 'var(--color-error)';
+      case 'warning':
+        return 'var(--color-warning)';
+      case 'info':
+        return 'var(--color-primary)';
+      default:
+        return 'var(--color-secondary)';
     }
   }};
 
@@ -132,12 +148,16 @@ const LogDetails = styled.div`
 const LogMessage = styled.div<{ $type: 'error' | 'warning' | 'info' }>`
   font-size: 0.875rem;
   line-height: 1.4;
-  color: ${props => {
+  color: ${(props) => {
     switch (props.$type) {
-      case 'error': return '#991b1b';
-      case 'warning': return '#92400e';
-      case 'info': return '#1e40af';
-      default: return 'var(--color-text)';
+      case 'error':
+        return '#991b1b';
+      case 'warning':
+        return '#92400e';
+      case 'info':
+        return '#1e40af';
+      default:
+        return 'var(--color-text)';
     }
   }};
   word-break: break-word;
@@ -170,29 +190,32 @@ const ClearButton = styled.button`
   }
 `;
 
-
 interface ErrorLogProps {
   logs: LogEntry[];
 }
 
 const getLogIcon = (type: 'error' | 'warning' | 'info'): string => {
   switch (type) {
-    case 'error': return '❌';
-    case 'warning': return '⚠️';
-    case 'info': return 'ℹ️';
-    default: return '📝';
+    case 'error':
+      return '❌';
+    case 'warning':
+      return '⚠️';
+    case 'info':
+      return 'ℹ️';
+    default:
+      return '📝';
   }
 };
 
 const getMostSevereType = (logs: LogEntry[]): 'error' | 'warning' | 'info' => {
-  if (logs.some(log => log.type === 'error')) return 'error';
-  if (logs.some(log => log.type === 'warning')) return 'warning';
+  if (logs.some((log) => log.type === 'error')) return 'error';
+  if (logs.some((log) => log.type === 'warning')) return 'warning';
   return 'info';
 };
 
 export function ErrorLog({ logs }: ErrorLogProps): JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   const hasLogs = logs.length > 0;
   const recentLogs = logs.slice(-10).reverse(); // Show last 10 logs, most recent first
   const mostSevereType = getMostSevereType(logs);
@@ -205,10 +228,10 @@ export function ErrorLog({ logs }: ErrorLogProps): JSX.Element {
   }
 
   const formatTimestamp = (timestamp: Date): string => {
-    return timestamp.toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit' 
+    return timestamp.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
     });
   };
 
@@ -218,16 +241,16 @@ export function ErrorLog({ logs }: ErrorLogProps): JSX.Element {
         <HeaderLeft>
           <StatusIndicator $type={mostSevereType} />
           <LogTitle>Application Log</LogTitle>
-          {hasLogs && (
-            <LogCount>({logs.length} entries)</LogCount>
-          )}
+          {hasLogs && <LogCount>({logs.length} entries)</LogCount>}
         </HeaderLeft>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
           {hasLogs && (
-            <ClearButton onClick={(e) => {
-              e.stopPropagation();
-              // TODO(#2): Implement clear logs functionality
-            }}>
+            <ClearButton
+              onClick={(e) => {
+                e.stopPropagation();
+                // TODO(#2): Implement clear logs functionality
+              }}
+            >
               Clear
             </ClearButton>
           )}
@@ -237,7 +260,7 @@ export function ErrorLog({ logs }: ErrorLogProps): JSX.Element {
 
       <LogContent $isExpanded={isExpanded}>
         <LogList>
-          {recentLogs.map(log => (
+          {recentLogs.map((log) => (
             <LogEntry key={log.id} $type={log.type}>
               <LogIcon>{getLogIcon(log.type)}</LogIcon>
               <LogDetails>
@@ -247,10 +270,10 @@ export function ErrorLog({ logs }: ErrorLogProps): JSX.Element {
             </LogEntry>
           ))}
           {logs.length > 10 && (
-            <LogEntry $type="info">
+            <LogEntry $type='info'>
               <LogIcon>📝</LogIcon>
               <LogDetails>
-                <LogMessage $type="info">
+                <LogMessage $type='info'>
                   ... and {logs.length - 10} more entries
                 </LogMessage>
               </LogDetails>

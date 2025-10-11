@@ -9,7 +9,7 @@
     "noImplicitThis": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": true
   },
   "imports": {
     "preact": "https://esm.sh/preact@10.19.2",
