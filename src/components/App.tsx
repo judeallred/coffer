@@ -84,6 +84,11 @@ export function App(): JSX.Element {
     logError('Offer removed', 'info');
   };
 
+  const clearAllOffers = (): void => {
+    setOffers([]);
+    logError('All offers cleared', 'info');
+  };
+
   const logError = (message: string, type: 'error' | 'warning' | 'info' = 'error'): void => {
     const newLog = {
       id: Date.now().toString(),
@@ -203,6 +208,7 @@ export function App(): JSX.Element {
             offers={offers}
             onAddOffer={addOffer}
             onDeleteOffer={deleteOffer}
+            onClearAll={clearAllOffers}
           />
           <SimpleCombinedOutput 
             offers={offers}

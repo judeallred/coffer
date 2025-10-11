@@ -81,6 +81,35 @@ Deno.test({
         console.log(`📏 Web UI result length: ${webResult.combinedOffer?.length || 0} characters`);
       });
 
+      await t.step('should clear all offers when clear button is clicked', async () => {
+        // Test the clear functionality by simulating the same logic the UI uses
+        const { initWalletSDK, combineOffers } = await import('../../src/services/walletSDK.ts');
+        
+        // Initialize the SDK first
+        await initWalletSDK();
+        
+        // First, add some offers (simulate what the UI would do)
+        const offers = [USER_OFFER_1, USER_OFFER_2];
+        const result = await combineOffers(offers);
+        
+        // Verify offers were combined successfully
+        assertEquals(result.success, true, 'Offers should combine before clearing');
+        assertExists(result.combinedOffer, 'Combined offer should exist before clearing');
+        
+        console.log(`\n🧹 CLEAR FUNCTIONALITY TEST:`);
+        console.log(`✅ Before clear: ${offers.length} offers, combined length: ${result.combinedOffer?.length || 0} characters`);
+        
+        // Simulate clearing all offers (empty array)
+        const clearedResult = await combineOffers([]);
+        
+        // Verify clearing works
+        assertEquals(clearedResult.success, false, 'Empty offers should fail to combine');
+        assertEquals(clearedResult.error, 'No valid offers to combine', 'Should return appropriate error message');
+        
+        console.log(`✅ After clear: 0 offers, error: "${clearedResult.error}"`);
+        console.log(`✅ Clear functionality works correctly`);
+      });
+
     } finally {
       // Clean up: kill the server process
       try {

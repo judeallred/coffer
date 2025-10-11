@@ -5,12 +5,14 @@ interface SimpleOfferInputsProps {
   offers: Offer[];
   onAddOffer: (content: string) => Promise<void>;
   onDeleteOffer: (id: string) => void;
+  onClearAll: () => void;
 }
 
 export function SimpleOfferInputs({ 
   offers,
   onAddOffer,
-  onDeleteOffer
+  onDeleteOffer,
+  onClearAll
 }: SimpleOfferInputsProps): JSX.Element {
   const [inputValues, setInputValues] = useState<string[]>(['']);
   const [isValidating, setIsValidating] = useState<boolean[]>([]);
@@ -85,10 +87,18 @@ export function SimpleOfferInputs({
     return offer.isValid ? 'valid' : 'invalid';
   };
 
+  const isInputReadOnly = (index: number): boolean => {
+    const value = inputValues[index]?.trim();
+    if (!value) return false;
+    
+    const offer = offers.find(o => o.content === value);
+    return !!offer; // Read-only if this input corresponds to an added offer
+  };
+
   const getStatusIcon = (status: string): string => {
     switch (status) {
-      case 'valid': return '✅';
-      case 'invalid': return '❌';
+      case 'valid': return '☑️';
+      case 'invalid': return '☹️';
       case 'validating': return '⏳';
       default: return '';
     }
@@ -105,8 +115,21 @@ export function SimpleOfferInputs({
   return (
     <div className="simple-offer-inputs">
       <div className="input-instructions">
-        <h3>Paste Chia offers below</h3>
-        <p>Each offer will be automatically validated and combined</p>
+        <div className="instructions-header">
+          <div className="instructions-text">
+            <h3>Paste Chia offers below</h3>
+            <p>Each offer will be automatically validated and combined</p>
+          </div>
+          {offers.length > 0 && (
+            <button
+              className="clear-all-button"
+              onClick={onClearAll}
+              title="Clear all offers"
+            >
+              🗑️ Clear All
+            </button>
+          )}
+        </div>
       </div>
       
       <div className="offer-inputs-list">
@@ -114,6 +137,7 @@ export function SimpleOfferInputs({
           const status = getInputStatus(index);
           const error = getOfferError(index);
           const isLastInput = index === inputValues.length - 1;
+          const isReadOnly = isInputReadOnly(index);
           
           return (
             <div key={index} className="offer-input-row">
@@ -121,12 +145,13 @@ export function SimpleOfferInputs({
                 <input
                   type="text"
                   value={value}
-                  onInput={(e) => handleInputChange(index, (e.target as HTMLInputElement).value)}
-                  onBlur={() => handleInputBlur(index)}
-                  onKeyPress={(e) => handleKeyPress(index, e)}
+                  onInput={isReadOnly ? undefined : (e) => handleInputChange(index, (e.target as HTMLInputElement).value)}
+                  onBlur={isReadOnly ? undefined : () => handleInputBlur(index)}
+                  onKeyPress={isReadOnly ? undefined : (e) => handleKeyPress(index, e)}
                   placeholder={isLastInput ? "Paste offer here..." : "Offer string..."}
-                  className={`offer-input ${status}`}
+                  className={`offer-input ${status} ${isReadOnly ? 'read-only' : ''}`}
                   disabled={isValidating[index]}
+                  readOnly={isReadOnly}
                 />
                 <div className="input-status">
                   {getStatusIcon(status)}
@@ -140,7 +165,7 @@ export function SimpleOfferInputs({
                     }}
                     title="Remove this offer"
                   >
-                    ✕
+                    🗑️
                   </button>
                 )}
               </div>
