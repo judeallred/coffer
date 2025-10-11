@@ -212,8 +212,7 @@ export function SimpleOfferInputs({
           <div className='instructions-text'>
             <h3>Paste Chia offers below</h3>
             <p>
-              You can paste <code>offer1...</code>{' '}
-              strings, offer ids, or Dexie/MintGarden offer page urls.
+              You can paste offers, offer ids, or Dexie/MintGarden offer page urls.
             </p>
             <p>Each offer will be automatically validated and combined</p>
           </div>

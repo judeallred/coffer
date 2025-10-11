@@ -4,6 +4,7 @@ import { SimpleOfferInputs } from './SimpleOfferInputs.tsx';
 import { SimpleCombinedOutput } from './SimpleCombinedOutput.tsx';
 import { ErrorLog } from './ErrorLog.tsx';
 import { showToast, ToastContainer } from './ToastContainer.tsx';
+import { About } from './About.tsx';
 import type { LogEntry, Offer } from '../types/index.ts';
 
 // Helper function to detect if a string is a 44-character base64 offer ID
@@ -391,6 +392,7 @@ export function App(): JSX.Element {
         </div>
       </main>
       <ErrorLog logs={errorLogs} />
+      <About />
       <ToastContainer />
     </div>
   );

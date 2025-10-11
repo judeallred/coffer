@@ -196,7 +196,7 @@ You can paste offers in three ways:
 - **Validation Status**: Each offer shows ✅ (valid) or ❌ (invalid/duplicate)
 - **Error Messages**: Invalid or duplicate offers display clear error messages
 - **Remove Offers**: Click the 🗑️ button to remove any offer
-- **Clear All**: Use the "Clear All" button to remove all offers
+- **Reset**: Use the "♻️ Reset" button to remove all offers
 
 ### Exporting Combined Offers
 
