@@ -87,6 +87,21 @@ for (const favicon of favicons) {
 }
 console.log('  ✓ Copied favicons');
 
+// Copy PWA files
+try {
+  await Deno.copyFile('./src/manifest.json', './dist/manifest.json');
+  console.log('  ✓ Copied manifest.json');
+} catch (error) {
+  console.warn('  ⚠ Failed to copy manifest.json:', error);
+}
+
+try {
+  await Deno.copyFile('./src/sw.js', './dist/sw.js');
+  console.log('  ✓ Copied service worker');
+} catch (error) {
+  console.warn('  ⚠ Failed to copy service worker:', error);
+}
+
 console.log('✅ Build completed successfully!');
 console.log('📁 Output files in ./dist/');
 console.log('📦 Chia Wallet SDK WASM will be loaded from npm package at runtime');
