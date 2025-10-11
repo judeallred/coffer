@@ -217,17 +217,19 @@ export function SimpleOfferInputs({
             </p>
             <p>Each offer will be automatically validated and combined</p>
           </div>
-          {offers.length > 0 && (
+        </div>
+        {offers.length > 0 && (
+          <div className='reset-button-container'>
             <button
               type='button'
-              className='clear-all-button'
+              className='reset-button'
               onClick={onClearAll}
-              title='Clear all offers'
+              title='Reset all offers'
             >
-              🗑️ Clear All
+              ♻️ Reset
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className='offer-inputs-list'>
