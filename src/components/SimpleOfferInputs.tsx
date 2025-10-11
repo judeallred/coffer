@@ -21,11 +21,11 @@ function extractOfferIdFromUrl(url: string): string | null {
     // https://dexie.space/offers/AqtaxKUF7UV4WKAYGr24frVMzt6xWWahTc4Xwc8EmhiK
     const urlPattern = /^https?:\/\/(mintgarden\.io|dexie\.space)\/offers\/([A-Za-z0-9+/]{44})$/;
     const match = url.match(urlPattern);
-    
+
     if (match && match[2]) {
       return match[2];
     }
-    
+
     return null;
   } catch {
     return null;
@@ -72,19 +72,15 @@ export function SimpleOfferInputs({
   onClearAll,
 }: SimpleOfferInputsProps): JSX.Element {
   const [inputValues, setInputValues] = useState<string[]>(['']);
-  const [isValidating, setIsValidating] = useState<boolean[]>([]);
 
   // Initialize input values when offers change
   useEffect(() => {
     if (offers.length === 0) {
       setInputValues(['']);
-      setIsValidating([]);
     } else {
       // Update input values to match offers
       const newInputValues = offers.map((offer) => offer.content);
       setInputValues([...newInputValues, '']); // Add empty input at the end
-      // Create validating array with correct length (offers + 1 for empty input)
-      setIsValidating(new Array(newInputValues.length + 1).fill(false));
     }
   }, [offers]);
 
@@ -102,12 +98,6 @@ export function SimpleOfferInputs({
     // Check if this offer was already added (to avoid duplicate processing)
     const alreadyAdded = offers.some((o) => o.content === value);
     if (alreadyAdded) return;
-
-    setIsValidating((prev) => {
-      const newValidating = [...prev];
-      newValidating[index] = true;
-      return newValidating;
-    });
 
     try {
       let offerToAdd = value;
@@ -130,15 +120,9 @@ export function SimpleOfferInputs({
       }
 
       await onAddOffer(offerToAdd);
-      // useEffect will handle adding new empty input and resetting validation state
+      // useEffect will handle adding new empty input
     } catch (error) {
       console.error('Failed to add offer:', error);
-      // Clear validating state on error
-      setIsValidating((prev) => {
-        const newValidating = [...prev];
-        newValidating[index] = false;
-        return newValidating;
-      });
     }
   };
 
@@ -164,12 +148,6 @@ export function SimpleOfferInputs({
       return newValues;
     });
 
-    setIsValidating((prev) => {
-      const newValidating = [...prev];
-      newValidating[index] = true;
-      return newValidating;
-    });
-
     try {
       let offerToAdd = trimmedValue;
 
@@ -192,20 +170,13 @@ export function SimpleOfferInputs({
 
       // Add the offer (this will trigger validation)
       await onAddOffer(offerToAdd);
-      // useEffect will handle adding new empty input and resetting validation state
+      // useEffect will handle adding new empty input
     } catch (error) {
       console.error('Failed to process pasted offer:', error);
-      setIsValidating((prev) => {
-        const newValidating = [...prev];
-        newValidating[index] = false;
-        return newValidating;
-      });
     }
   };
 
-  const getInputStatus = (index: number): 'valid' | 'invalid' | 'validating' | 'empty' => {
-    if (isValidating[index]) return 'validating';
-
+  const getInputStatus = (index: number): 'valid' | 'invalid' | 'empty' => {
     const value = inputValues[index]?.trim();
     if (!value) return 'empty';
 
@@ -218,11 +189,9 @@ export function SimpleOfferInputs({
   const getStatusIcon = (status: string): string => {
     switch (status) {
       case 'valid':
-        return '☑️';
+        return '✅';
       case 'invalid':
         return '☹️';
-      case 'validating':
-        return '⏳';
       default:
         return '';
     }
@@ -242,20 +211,25 @@ export function SimpleOfferInputs({
         <div className='instructions-header'>
           <div className='instructions-text'>
             <h3>Paste Chia offers below</h3>
-            <p>You can paste <code>offer1...</code> strings, offer ids, or Dexie/MintGarden offer page urls.</p>
+            <p>
+              You can paste <code>offer1...</code>{' '}
+              strings, offer ids, or Dexie/MintGarden offer page urls.
+            </p>
             <p>Each offer will be automatically validated and combined</p>
           </div>
-          {offers.length > 0 && (
+        </div>
+        {offers.length > 0 && (
+          <div className='reset-button-container'>
             <button
               type='button'
-              className='clear-all-button'
+              className='reset-button'
               onClick={onClearAll}
-              title='Clear all offers'
+              title='Reset all offers'
             >
-              🗑️ Clear All
+              ♻️ Reset
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className='offer-inputs-list'>
@@ -276,7 +250,6 @@ export function SimpleOfferInputs({
                   onKeyPress={(e) => handleKeyPress(index, e)}
                   placeholder={isLastInput ? 'Paste offer here...' : 'Offer string...'}
                   className={`offer-input ${status}`}
-                  disabled={isValidating[index]}
                 />
                 <div className='input-status'>
                   {getStatusIcon(status)}

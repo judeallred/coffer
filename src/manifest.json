@@ -1,0 +1,25 @@
+{
+  "name": "Coffer - Chia Offer Combiner",
+  "short_name": "Coffer",
+  "description": "A professional web application for combining Chia offers with WASM-powered validation",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#6b46c1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "finance", "productivity"],
+  "screenshots": []
+}
