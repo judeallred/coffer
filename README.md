@@ -1,27 +1,27 @@
 # Coffer
 
-A professional web application for parsing, analyzing, and combining Chia offers with real-time token identification
+A professional web application for combining Chia offers with WASM-powered validation
 
 ## ✅ Status: Production Ready
 
-**Advanced Offer Management**: Coffer provides an intuitive interface for combining multiple Chia offers using cutting-edge WASM-powered parsing, real-time CAT token identification via Dexie API, and global clipboard integration.
+**Simple Offer Combining**: Coffer provides a clean, minimal interface for combining multiple Chia offers using WASM-powered validation and global clipboard integration.
 
 ## About
 
-Coffer is a modern single-page web application that leverages the Chia Wallet SDK's WASM bindings and live marketplace data to provide comprehensive offer management directly in your browser.
+Coffer is a modern single-page web application that leverages the Chia Wallet SDK's WASM bindings to provide offer combination directly in your browser.
 
 **Key Features:**
 
-- **Real-time CAT Token Identification**: Integrates with Dexie API to display proper names for 545+ CAT tokens (wUSDC.b, SBX, Spacebucks, etc.)
-- **Professional WASM Parsing**: Uses proper Chia Wallet SDK functions instead of heuristics for accurate NFT/CAT/XCH identification
-- **Smart Asset Aggregation**: Automatically combines multiple coins of the same asset ID for accurate totals
+- **Professional WASM Validation**: Uses Chia Wallet SDK for accurate offer validation
+- **Flexible Input Options**: Paste `offer1...` strings, 44-character offer IDs, or Dexie/MintGarden offer URLs
+- **API Integration**: Automatically fetches full offers from Dexie and MintGarden APIs when given offer IDs or URLs
 - **Global Clipboard Integration**: Paste offers anywhere on the page, copy combined offers with Ctrl+C
-- **Interactive Offer Cards**: Visual cards show offer details with proper token names and smooth animations
-- **Advanced Parsing Engine**: Correctly extracts request amounts from complex offer structures
-- **Persistent Storage**: Offers are saved locally and restored between sessions
+- **Real-time Validation**: Instant feedback with validation status indicators (✅/❌)
+- **Duplicate Detection**: Automatically prevents adding the same offer multiple times
 - **Toast Notifications**: Clear visual feedback for all operations
+- **Clean, Minimal UI**: Simple input fields with clear validation states
 
-The application uses the `chia-wallet-sdk-wasm` package for offer validation and parsing, combined with live Dexie marketplace data for token identification.
+The application uses the `chia-wallet-sdk-wasm` package for offer validation and combination.
 
 # Tech Stack
 
@@ -43,31 +43,18 @@ This project is implemented as a single-page static client side website. It uses
 - **Minimalist design aesthetic** with simple, effective styles
 - **Responsive design** for desktop and mobile
 
-## Modern Interface Design
+## Interface Design
 
 - **Global Paste Detection**: Simply paste any Chia offer string anywhere on the page - it's automatically detected and added
-- **Compact Instruction Card**: Prominent gradient instruction panel explains the paste-anywhere functionality
-- **Animated Offer Cards**: Each valid offer appears as an interactive card with:
+- **Flexible Input Fields**:
+  - Paste `offer1...` strings directly
+  - Paste 44-character offer IDs (automatically fetched from APIs)
+  - Paste Dexie or MintGarden offer URLs (ID extracted and fetched)
   - Real-time validation status (✅/❌)
-  - Summary of requested ⇄ offered assets
-  - Expandable section showing full offer string
-  - Individual remove buttons (X)
-  - Smooth slide-in animations
-- **No Input Fields**: Eliminated traditional text inputs for a cleaner, more intuitive experience
-- **Professional Token Identification**: Real CAT token names from Dexie marketplace (wUSDC.b, Spacebucks, etc.)
-- **Smart Asset Aggregation**: Multiple coins of same asset automatically combined for accurate totals
-- **NFT Thumbnail Display**: Shows actual NFT images in both individual and combined offer previews
-
-## Offer Preview
-
-- Two-column layout similar to Dexie's offer display
-- Left side shows "Requested" assets, right side shows "Offered" assets
-- Bidirectional arrow in the center indicating the exchange
-- For each asset displays:
-  - Asset icon/image
-  - Proper asset names and amounts (e.g., "0.19 XCH", "2.435 wUSDC.b", "10 Spacebucks")
-  - For NFTs: thumbnail image, name, collection info, and metadata inspection option
-- **Live Token Data**: 545+ CAT tokens with real names from Dexie trading pairs
+  - Individual remove buttons (🗑️) for each offer
+  - Clear error messages for invalid or duplicate offers
+- **Instant Validation**: Each offer is validated immediately using WASM SDK
+- **Duplicate Prevention**: Duplicate offers show validation errors instead of being added silently
 
 ## Error Handling
 
@@ -84,9 +71,8 @@ This project is implemented as a single-page static client side website. It uses
 - **Universal Copy**: Press Ctrl+C (or Cmd+C on Mac) anywhere on the page to copy the combined offer
 - **Smart Context Detection**: Respects normal copy behavior in input fields and text selections
 - **Instant Feedback**: Toast notifications confirm successful clipboard operations
-- **Download Support**: Export combined offers as `.offer` files
-- **Paste Anywhere**: Paste valid offer strings anywhere on the page for instant detection
-- **Duplicate Prevention**: Automatically prevents adding the same offer twice
+- **Paste Anywhere**: Paste valid offer strings, offer IDs, or URLs anywhere on the page for instant detection
+- **Duplicate Prevention**: Automatically prevents adding the same offer twice with clear error messages
 
 ## Deployment
 
@@ -96,94 +82,71 @@ This project is implemented as a single-page static client side website. It uses
 
 # Implementation Status
 
-## ✅ Production Ready: Advanced Offer Management
+## ✅ Production Ready: Simple Offer Combining
 
 ### Core Functionality
 
-- [x] **Professional WASM Parsing**: Uses proper Chia SDK puzzle identification (not heuristics)
-- [x] **Live Token Identification**: Real-time CAT token names via Dexie API (545+ tokens)
-- [x] **Smart Asset Aggregation**: Automatically combines coins by asset ID for accurate totals
-- [x] **Multi-NFT Bundle Support**: Correctly handles complex multi-NFT offers (10+ NFTs)
-- [x] **CAT-to-CAT Trading**: Full support for complex token-to-token exchanges
+- [x] **Professional WASM Validation**: Uses Chia Wallet SDK for offer validation and combining
+- [x] **Flexible Input Options**: Accepts offer strings, offer IDs, and marketplace URLs
+- [x] **API Integration**: Fetches full offers from Dexie and MintGarden APIs
 - [x] **Global Clipboard**: Universal paste detection and Ctrl+C copy functionality
-- [x] **Persistent Storage**: localStorage integration for session restoration
+- [x] **Real-time Validation**: Instant validation with clear status indicators
+- [x] **Duplicate Detection**: Prevents duplicate offers with clear error messages
 
-### Advanced Parsing Engine
+### User Interface
 
-- [x] **Proper Asset Classification**: Uses `puzzle.parseCatInfo()` and `puzzle.parseNftInfo()`
-- [x] **Asset ID Mapping**: Real token names instead of generic "CAT abc123..." labels
-- [x] **Marketplace Integration**: Live data from Dexie trading pairs for token identification
-- [x] **24-Hour Caching**: Efficient token data caching with automatic refresh
-- [x] **Error Handling**: Graceful fallbacks for unknown tokens and network issues
-
-### Modern User Interface
-
-- [x] **Professional Token Display**: "wUSDC.b", "Spacebucks" instead of generic CAT labels
-- [x] **Animated Offer Cards**: Smooth slide-in animations with proper token names
-- [x] **Interactive Previews**: Expandable offer cards with detailed summaries
-- [x] **NFT Bundle Display**: Clean presentation of multi-NFT offers
+- [x] **Clean Input Fields**: Simple, minimal interface with validation states
 - [x] **Toast Notifications**: Real-time feedback for all operations
+- [x] **Error Messages**: Clear error display for invalid or duplicate offers
 - [x] **Responsive Design**: Optimized for desktop and mobile devices
+- [x] **Copy to Clipboard**: One-click copying of combined offers
 
 ## 🧪 Comprehensive Testing
 
-### ✅ Comprehensive Test Suite (WASM + API + Browser)
+### ✅ Test Suite (WASM + API + Browser)
 
-- **WASM Puzzle Parsing**: Proper CAT/NFT identification using Chia SDK functions
-- **Dexie API Integration**: Live token data fetching and caching (545+ tokens)
-- **Asset Aggregation**: Multiple coin combination by asset ID validation
-- **Complex Offer Types**: Multi-NFT bundles, CAT-to-CAT exchanges, mixed offers
-- **User Interface**: Animation testing, toast notifications, clipboard operations
-- **Network Resilience**: API failure handling and cache fallback testing
+- **WASM Offer Validation**: Proper offer validation and combining using Chia SDK
+- **API Integration**: Fetching offers from Dexie and MintGarden APIs
+- **Duplicate Detection**: Validation prevents duplicate offers from being added
+- **User Interface**: Toast notifications, clipboard operations, input validation
+- **Network Resilience**: API failure handling with graceful fallbacks
 
-**Example Test Results:**
+**Test Results:**
 
 ```
-🌐 Fetching CAT token data from Dexie API...
-📊 Processing 545 tickers from Dexie...
-✅ Processed 545 CAT tokens from Dexie tickers
-
-📥📤 Added CAT to offered: 1.585 wUSDC.b     ← Real token name!
-🔄 Aggregated CAT offered: 2.459 wUSDC.b    ← Proper aggregation!
-📤 Final offered: 2.459 wUSDC.b             ← Professional display!
-
-✅ wUSDC.b offer detected: true              ← Test passes!
+✅ All tests passing
+- Offer validation with WASM SDK
+- API fetching from Dexie and MintGarden
+- Duplicate offer detection
+- E2E web UI tests
 ```
-
-### Key Achievements
-
-- **Professional Token Display**: Real names like "wUSDC.b", "Spacebucks" vs generic "CAT abc123..."
-- **Marketplace Integration**: Live token data from 545+ Dexie trading pairs
-- **Asset Aggregation**: Multiple coins properly combined by asset ID
-- **Proper WASM Parsing**: Uses `puzzle.parseCatInfo()` instead of length heuristics
 
 ## 🚀 Technical Architecture
 
-### Advanced Token Identification
+### WASM Integration
 
-- **Live Market Data**: Integrates with [Dexie API](https://api.dexie.space/v3/prices/tickers) for real-time token names
-- **Professional Display**: "wUSDC.b", "Spacebucks", "Dexie Bucks" instead of generic labels
-- **Efficient Caching**: 24-hour cache with automatic refresh and network fallbacks
-- **545+ Tokens Supported**: All tokens actively trading on Dexie marketplace
+- **Chia Wallet SDK**: Uses official `chia-wallet-sdk-wasm` package for offer validation
+- **Browser-Compatible**: Full WASM integration for client-side offer combining
+- **No Backend Required**: Entirely static, client-side application
 
-### Proper WASM Integration
+### API Integration
 
-- **Chia SDK Functions**: Uses `puzzle.parseCatInfo()` and `puzzle.parseNftInfo()` for accurate classification
-- **Asset Aggregation**: Multiple coins of same asset ID automatically combined
-- **Multi-Asset Support**: Handles complex CAT-to-CAT, NFT bundles, and mixed offers
+- **Dexie API**: Fetches full offers from offer IDs via [Dexie API](https://api.dexie.space/v1/offers/)
+- **MintGarden API**: Fallback for fetching offers via [MintGarden API](https://api.mintgarden.io/offers/)
+- **URL Support**: Extracts offer IDs from Dexie and MintGarden URLs
 
 ### Modern UX Design
 
 - **Zero-Click Interface**: No buttons needed - paste anywhere, copy with Ctrl+C
-- **Professional Token Display**: Real token names throughout the interface
-- **Visual Feedback**: Professional animations and toast notifications
+- **Flexible Inputs**: Accept offer strings, IDs, or URLs
+- **Visual Feedback**: Toast notifications and validation indicators
 - **Mobile Optimized**: Touch-friendly responsive design
 
 # Getting Started
 
 ## 🚀 Ready to Use
 
-**Coffer is production-ready** with professional WASM parsing, live Dexie token identification, and modern clipboard functionality.
+**Coffer is production-ready** with WASM validation, API integration, and clipboard functionality.
 
 ## Development
 
@@ -195,7 +158,6 @@ pnpm install
 deno task dev
 
 # Open browser to http://localhost:8000
-# Expected: Professional offer interface with real CAT token names
 ```
 
 ### Pre-commit Hooks
@@ -218,34 +180,41 @@ The hooks are installed automatically when you run `pnpm install` via the `prepa
 
 ### Adding Offers
 
-1. **Copy** any Chia offer string to your clipboard
-2. **Paste anywhere** on the Coffer page (Ctrl+V / Cmd+V)
-3. **Watch** the offer animate in as an interactive card
-4. **Repeat** for additional offers
+You can paste offers in three ways:
+
+1. **Full Offer String**: Paste the complete `offer1...` string
+2. **Offer ID**: Paste a 44-character base64 offer ID (automatically fetched from APIs)
+3. **Marketplace URL**: Paste a Dexie or MintGarden offer URL (ID extracted and fetched)
+
+**Methods:**
+
+- Paste directly into an input field
+- Paste anywhere on the page (global paste detection)
 
 ### Managing Offers
 
-- **View Details**: Click "Show offer string" to expand full offer data
-- **Remove Offers**: Click the ✕ button on any offer card
-- **Automatic Persistence**: Offers are saved and restored between sessions
+- **Validation Status**: Each offer shows ✅ (valid) or ❌ (invalid/duplicate)
+- **Error Messages**: Invalid or duplicate offers display clear error messages
+- **Remove Offers**: Click the 🗑️ button to remove any offer
+- **Clear All**: Use the "Clear All" button to remove all offers
 
 ### Exporting Combined Offers
 
 - **Quick Copy**: Press Ctrl+C (or Cmd+C) anywhere on the page
-- **Download File**: Use the download button in the combined preview
+- **Manual Copy**: Click the 📋 button next to the combined offer
 - **Toast Feedback**: Visual confirmation for all clipboard operations
 
 ## Testing
 
 ```bash
-# Run comprehensive test suite
-deno test tests/ --allow-all --allow-net
+# Run test suite
+deno test tests/ --allow-all
 
 # Test includes:
-# - WASM puzzle parsing with proper SDK functions
-# - Dexie API integration and token name resolution  
-# - Asset aggregation and complex offer handling
-# - Network resilience and caching functionality
+# - WASM offer validation and combining
+# - API integration (Dexie and MintGarden)
+# - Duplicate offer detection
+# - E2E web UI tests
 ```
 
 ## Production Build
@@ -257,260 +226,44 @@ deno task build
 # Deploy ./dist folder to any static hosting provider
 ```
 
-# Professional Chia Offer Management
+# Simple Chia Offer Combining
 
-Coffer delivers enterprise-grade Chia offer functionality with cutting-edge token identification and WASM integration:
+Coffer provides a clean, minimal interface for combining multiple Chia offers:
 
 **Core Capabilities:**
 
-- **Live Token Identification**: Real CAT token names from Dexie marketplace (545+ tokens)
-- **Professional WASM Parsing**: Proper Chia SDK functions replace crude heuristics
-- **Smart Asset Aggregation**: Multiple coins automatically combined by asset ID
-- **Advanced Offer Types**: Multi-NFT bundles, CAT-to-CAT exchanges, complex trades
-- **Real-time Validation**: Instant parsing with professional token display
-- **Cross-Platform**: Seamless operation on Windows, macOS, and Linux browsers
+- **WASM Validation**: Uses official Chia Wallet SDK for offer validation and combining
+- **Flexible Inputs**: Accepts offer strings, offer IDs, or marketplace URLs
+- **API Integration**: Automatically fetches offers from Dexie and MintGarden APIs
+- **Duplicate Prevention**: Clear error messages prevent adding the same offer twice
+- **Real-time Validation**: Instant feedback with validation status indicators
+- **Cross-Platform**: Works seamlessly on Windows, macOS, and Linux browsers
 
 **Technical Architecture:**
 
-1. **Dexie API Integration** → Live token data from marketplace trading pairs
-2. **Professional WASM Parsing** → `puzzle.parseCatInfo()` and `puzzle.parseNftInfo()`
-3. **Asset Aggregation Engine** → Multiple coin combination by asset ID
-4. **24-Hour Caching System** → Efficient token data management with fallbacks
-5. **Modern UI Framework** → Real token names throughout interface
+1. **WASM Integration** → Uses `chia-wallet-sdk-wasm` for client-side validation
+2. **API Fetching** → Retrieves full offers from Dexie and MintGarden endpoints
+3. **Global Paste Detection** → Paste anywhere on the page for instant offer addition
+4. **Static Deployment** → No backend required, entirely client-side
+5. **Modern UI** → Clean, minimal interface with clear validation states
 
 ## ✅ Production Ready
 
-**Coffer represents a significant advancement in Chia offer management:**
+**Coffer provides a straightforward solution for Chia offer combining:**
 
-- **545+ CAT Tokens**: Professional token identification via live Dexie marketplace data
-- **Proper SDK Integration**: Uses official Chia Wallet SDK functions instead of heuristics
-- **Enterprise-Grade UX**: Professional token display throughout the application
-- **Comprehensive Testing**: Validated with complex real-world offer scenarios
+- **WASM Powered**: Uses official Chia Wallet SDK for accurate validation
+- **API Integration**: Fetches offers from Dexie and MintGarden marketplaces
+- **User-Friendly**: Clear validation states and error messages
+- **Comprehensive Testing**: E2E tests validate all functionality
 - **Static Deployment**: Self-contained application deployable anywhere
 
-**Coffer transforms Chia offer management from technical complexity to professional simplicity, delivering the most advanced offer parsing and token identification available in the ecosystem.**
+**Coffer simplifies Chia offer combining with a clean interface and robust validation.**
 
 ---
 
-# How to Parse a Chia Offer
+# Resources
 
-Properly parsing Chia offers requires understanding the structure of spend bundles and using the correct WASM SDK functions. This guide details the comprehensive approach used in Coffer for accurate asset extraction.
-
-## Offer Structure Overview
-
-A Chia offer file contains:
-
-- **SpendBundle**: Contains one or more `CoinSpend` objects
-- **CoinSpend**: Each represents a coin being spent, with:
-  - `coin`: The coin being spent (contains amount)
-  - `puzzleReveal`: The puzzle program (contains asset type information)
-  - `solution`: The solution to the puzzle (may contain XCH amounts)
-
-## Step-by-Step Parsing Process
-
-### 1. Initialize and Decode the Offer
-
-```typescript
-import { initWalletSDK } from './services/walletSDK.ts';
-
-// Initialize WASM module
-await initWalletSDK();
-
-// Decode the offer string to get SpendBundle
-const wasmModule = await import('chia-wallet-sdk-wasm');
-const spendBundle = wasmModule.decodeOffer(offerString);
-```
-
-### 2. Analyze Each CoinSpend
-
-For each `coinSpend` in the `spendBundle.coinSpends`:
-
-#### A. Parse Puzzle Information (Asset Type Detection)
-
-```typescript
-// Proper WASM SDK puzzle parsing (not heuristics!)
-const clvm = new wasmModule.Clvm();
-const puzzleProgram = clvm.deserialize(coinSpend.puzzleReveal);
-const puzzle = puzzleProgram.puzzle();
-
-// Check for NFT
-const nftInfo = puzzle.parseNftInfo();
-if (nftInfo) {
-  // Handle NFT: extract NFT ID, metadata, etc.
-  const nftId = nftInfo.nftId();
-  const nftMetadata = extractNFTMetadata(coinSpend.puzzleReveal);
-  // Add to offered/requested based on amount sign
-}
-
-// Check for CAT token
-const catInfo = puzzle.parseCatInfo();
-if (catInfo) {
-  // Handle CAT: extract asset ID
-  const assetId = catInfo.assetId();
-  const tokenName = await getDexieCATDisplayName(assetId); // Live API lookup
-  // Aggregate by asset ID for proper totals
-}
-
-// Handle XCH (standard puzzle)
-if (!nftInfo && !catInfo) {
-  // This is an XCH coin
-  const amountMojos = coinSpend.coin.amount;
-  const xchAmount = amountMojos / 1_000_000_000_000;
-  // Add to appropriate bucket based on offer/request logic
-}
-```
-
-#### B. Asset Aggregation by ID
-
-Critical for accurate amounts - multiple coins of the same asset must be combined:
-
-```typescript
-const requestedAssets = new Map<string, AssetData>();
-const offeredAssets = new Map<string, AssetData>();
-
-// For each detected asset, aggregate by asset ID
-if (targetMap.has(assetId)) {
-  const existing = targetMap.get(assetId)!;
-  existing.amount += currentAmount;
-} else {
-  targetMap.set(assetId, {
-    amount: currentAmount,
-    asset: assetName,
-    assetId: assetId,
-  });
-}
-```
-
-#### C. Offer vs Request Classification
-
-Use proper heuristics to determine if an asset is being offered or requested:
-
-```typescript
-// For CAT tokens: Use context-aware classification
-const hasNFTOffered = Array.from(offeredAssets.values()).some((asset) => asset.isNFT);
-const isLikelyRequest = hasNFTOffered; // CATs are requests mainly in NFT sales
-
-// For XCH: Multiple strategies
-if (hasNFTOffered && assetType === 'XCH') {
-  // XCH is likely being requested for NFT purchase
-  addToRequested(xchAmount);
-} else {
-  // Use amount-based heuristic: smaller amounts often requests
-  const isLikelyRequest = amountMojos < 1_000_000_000_000; // Less than 1 XCH
-}
-```
-
-### 3. Extract XCH from Solution Data
-
-For complex offers, XCH amounts may be encoded in solution data rather than coin amounts:
-
-```typescript
-function extractAmountsFromSolution(solution: Uint8Array): number[] {
-  const amounts: number[] = [];
-  const solutionArray = Array.from(solution);
-
-  // Priority search for known target amounts
-  const priorityTargets = [
-    279_400_000_000, // 0.2794 XCH (wUSDC.b example)
-    // ... other known amounts
-  ];
-
-  // Search for exact byte patterns in multiple encodings
-  for (const target of priorityTargets) {
-    // 5-byte little-endian
-    const targetBytes5 = [];
-    let val = target;
-    for (let j = 0; j < 5; j++) {
-      targetBytes5.push(val & 0xFF);
-      val >>= 8;
-    }
-
-    // Search for pattern in solution data
-    for (let i = 0; i <= solutionArray.length - 5; i++) {
-      const slice = solutionArray.slice(i, i + 5);
-      if (slice.every((byte, idx) => byte === targetBytes5[idx])) {
-        amounts.push(target);
-        break;
-      }
-    }
-  }
-
-  return [...new Set(amounts)]; // Remove duplicates
-}
-```
-
-### 4. Professional Token Identification
-
-Integration with live marketplace data for proper CAT token names:
-
-```typescript
-// Instead of generic "CAT abc123..." labels
-import { getDexieCATDisplayName } from './services/dexieTokenData.ts';
-
-const tokenName = await getDexieCATDisplayName(assetId);
-// Returns "wUSDC.b", "Spacebucks", "Dexie Bucks" etc. for 545+ tokens
-
-// With 24-hour caching and network fallbacks
-const dexieTokenData = new Map<string, CATTokenInfo>();
-```
-
-### 5. Handle Complex Offer Types
-
-#### Multi-NFT Bundles
-
-```typescript
-// Detect bundle offers (10+ NFTs)
-const nftCount = Array.from(offeredAssets.values()).filter((asset) => asset.isNFT).length;
-if (nftCount >= 8) {
-  // Handle as bundle, aggregate XCH requests accordingly
-}
-```
-
-#### CAT-to-CAT Exchanges
-
-```typescript
-// No XCH involved, just token swaps
-const hasCAtsOffered = Array.from(offeredAssets.values()).some((asset) => asset.assetId);
-const hasCATsRequested = Array.from(requestedAssets.values()).some((asset) => asset.assetId);
-```
-
-## Key Implementation Principles
-
-### ✅ Best Practices
-
-1. **Use Proper WASM SDK Functions**: Always use `puzzle.parseNftInfo()` and `puzzle.parseCatInfo()` instead of heuristics
-2. **Asset Aggregation**: Multiple coins of the same asset ID must be combined for accurate totals
-3. **Live Token Data**: Integrate with Dexie API for professional token names (545+ supported)
-4. **Multiple Search Strategies**: Check both coin amounts and solution data for XCH values
-5. **Context-Aware Classification**: Use offer context to determine if assets are offered vs requested
-
-### ❌ Common Mistakes
-
-1. **Length-Based Heuristics**: Don't use puzzle length to guess asset types
-2. **Missing Aggregation**: Don't treat each coin as a separate asset
-3. **Generic Token Names**: Don't use "CAT abc123..." labels
-4. **Single Search Strategy**: Don't only check coin amounts for XCH
-5. **Poor Classification Logic**: Don't use simplistic amount-based offer/request logic
-
-## Advanced Features
-
-### Solution Data Mining
-
-Some offers encode XCH request amounts in solution data using various byte patterns and encodings.
-
-### Market Integration
-
-Live token identification from Dexie marketplace provides professional UX with real token names.
-
-### Caching Strategy
-
-24-hour token data caching with automatic refresh and network failure fallbacks.
-
-## Resources
-
-- [Sage Wallet Implementation](https://github.com/xch-dev/sage) - Production Rust reference
-- [Chia Wallet SDK WASM](https://www.npmjs.com/package/chia-wallet-sdk-wasm) - WASM bindings
-- [Dexie API Documentation](https://api.dexie.space/v3/prices/tickers) - Token metadata source
+- [Chia Wallet SDK WASM](https://www.npmjs.com/package/chia-wallet-sdk-wasm) - WASM bindings used by Coffer
+- [Dexie API](https://api.dexie.space/v1/offers/) - Offer lookup by ID
+- [MintGarden API](https://api.mintgarden.io/offers/) - Fallback offer lookup
 - [Chia Offers Guide](https://docs.chia.net/guides/offers-cli-tutorial/) - Official documentation
-
-This parsing approach delivers professional-grade offer management with proper asset identification, aggregation, and token naming suitable for production applications.
