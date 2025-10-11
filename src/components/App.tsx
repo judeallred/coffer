@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'preact/hooks';
 import { Header } from './Header.tsx';
-import { OfferInputs } from './OfferInputs.tsx';
-import { CombinedPreview } from './CombinedPreview.tsx';
+import { SimpleOfferInputs } from './SimpleOfferInputs.tsx';
+import { SimpleCombinedOutput } from './SimpleCombinedOutput.tsx';
 import { ErrorLog } from './ErrorLog.tsx';
 import { ToastContainer, showToast } from './ToastContainer.tsx';
-import type { Offer, LogEntry, OfferData } from '../types/index.ts';
+import type { Offer, LogEntry } from '../types/index.ts';
 
 const STORAGE_KEY = 'coffer-offers';
 
 export function App(): JSX.Element {
   const [offers, setOffers] = useState<Offer[]>([]);
-  const [combinedOffer, setCombinedOffer] = useState<string>('');
   const [errorLogs, setErrorLogs] = useState<LogEntry[]>([]);
 
   // Load offers from localStorage on startup
@@ -36,22 +35,15 @@ export function App(): JSX.Element {
     }
   }, [offers]);
 
-  const validateOffer = async (content: string): Promise<{ isValid: boolean; error?: string; parsedData?: OfferData }> => {
+  const validateOffer = async (content: string): Promise<{ isValid: boolean; error?: string }> => {
     try {
       const { validateOffer: validateOfferSDK } = await import('../services/walletSDK.ts');
       const result = await validateOfferSDK(content);
       
-      if (result.isValid && result.data) {
-        return {
-          isValid: true,
-          parsedData: result.data
-        };
-      } else {
-        return {
-          isValid: false,
-          error: result.error || 'Invalid offer'
-        };
-      }
+      return {
+        isValid: result.isValid,
+        error: result.error
+      };
     } catch (error) {
       return {
         isValid: false,
@@ -77,8 +69,7 @@ export function App(): JSX.Element {
       id: newId,
       content,
       isValid: validation.isValid,
-      error: validation.error,
-      parsedData: validation.parsedData
+      error: validation.error
     };
 
     setOffers(prev => [...prev, newOffer]);
@@ -171,17 +162,27 @@ export function App(): JSX.Element {
           return;
         }
 
-        if (combinedOffer && combinedOffer.trim()) {
+        // Check if there are any valid offers to combine
+        const validOffers = offers.filter(offer => offer.isValid && offer.content.trim());
+        if (validOffers.length > 0) {
           try {
-            await navigator.clipboard.writeText(combinedOffer);
-            showToast('📋 Combined offer copied to clipboard!', 'success', 3000);
-            e.preventDefault(); // Prevent default copy behavior
+            const { combineOffers } = await import('../services/walletSDK.ts');
+            const offerStrings = validOffers.map(offer => offer.content);
+            const result = await combineOffers(offerStrings);
+            
+            if (result.success && result.combinedOffer) {
+              await navigator.clipboard.writeText(result.combinedOffer);
+              showToast('📋 Combined offer copied to clipboard!', 'success', 3000);
+              e.preventDefault(); // Prevent default copy behavior
+            } else {
+              showToast('Failed to generate combined offer', 'error');
+            }
           } catch (error) {
             showToast('Failed to copy combined offer to clipboard', 'error');
             logError(`Failed to copy to clipboard: ${error}`, 'error');
           }
         } else {
-          showToast('No combined offer available to copy', 'warning');
+          showToast('No valid offers available to copy', 'warning');
         }
       }
     };
@@ -191,22 +192,21 @@ export function App(): JSX.Element {
     return () => {
       document.removeEventListener('keydown', handleGlobalCopy);
     };
-  }, [combinedOffer]); // Re-register when combined offer changes
+  }, [offers]); // Re-register when offers change
 
   return (
     <div className="app-container">
       <Header />
       <main className="main-content">
-        <div className="content-grid">
-        <OfferInputs 
-          offers={offers}
-          onDeleteOffer={deleteOffer}
-        />
-          <CombinedPreview 
-            offers={offers.filter(o => o.isValid)}
-            combinedOffer={combinedOffer}
+        <div className="simplified-content">
+          <SimpleOfferInputs 
+            offers={offers}
+            onAddOffer={addOffer}
+            onDeleteOffer={deleteOffer}
+          />
+          <SimpleCombinedOutput 
+            offers={offers}
             onLogError={logError}
-            onCombinedOfferUpdate={setCombinedOffer}
           />
         </div>
       </main>

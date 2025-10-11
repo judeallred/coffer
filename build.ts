@@ -25,6 +25,9 @@ const result = await esbuild.build({
   target: ['chrome90', 'firefox88', 'safari14'],
   jsxFactory: 'h',
   jsxFragment: 'Fragment',
+  loader: {
+    '.css': 'text',
+  },
 });
 
 if (result.errors.length > 0) {

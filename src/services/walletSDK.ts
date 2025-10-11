@@ -1,16 +1,6 @@
-// Chia Wallet SDK WASM integration for Coffer using npm package
-import type { OfferData, AssetData } from '../types/index.ts';
-import { getDexieCATDisplayName } from './dexieTokenData.ts';
-
-// WASM module will be loaded from npm package
+// Chia Wallet SDK WASM integration for offer combination only
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let wasmModule: any = null;
-
-export interface WasmOfferResult {
-  isValid: boolean;
-  error?: string;
-  data?: OfferData;
-}
 
 // Initialize the WASM module from local files
 export async function initWalletSDK(): Promise<void> {
@@ -19,8 +9,13 @@ export async function initWalletSDK(): Promise<void> {
     const chiaSDK = await import('chia-wallet-sdk-wasm');
     
     // Initialize WASM if needed
-    if (chiaSDK.default) {
-      await chiaSDK.default(); // Call the default init function
+    if (typeof chiaSDK.default === 'function') {
+      await (chiaSDK.default as any)(); // Call the default init function
+    } else if ((chiaSDK as any).init && typeof (chiaSDK as any).init === 'function') {
+      await (chiaSDK as any).init(); // Alternative init function
+    } else {
+      // WASM module might already be initialized, just log warning
+      console.warn('⚠️ No init function found, assuming WASM is already initialized');
     }
     
     // Set up error handling if available
@@ -36,8 +31,8 @@ export async function initWalletSDK(): Promise<void> {
   }
 }
 
-// Validate and parse a Chia offer string
-export async function validateOffer(offerString: string): Promise<WasmOfferResult> {
+// Simple offer validation - just check if it's a valid offer string format
+export async function validateOffer(offerString: string): Promise<{ isValid: boolean; error?: string }> {
   if (!offerString.trim()) {
     return {
       isValid: false,
@@ -50,7 +45,7 @@ export async function validateOffer(offerString: string): Promise<WasmOfferResul
   }
 
   try {
-    // Use the SDK's decodeOffer function to parse the offer
+    // Use the SDK's decodeOffer function to validate the offer
     const spendBundle = wasmModule.decodeOffer(offerString.trim());
     
     if (!spendBundle) {
@@ -60,12 +55,8 @@ export async function validateOffer(offerString: string): Promise<WasmOfferResul
       };
     }
 
-    // Parse the spend bundle to extract asset information
-    const parsedData = await parseSpendBundle(spendBundle);
-    
     return {
-      isValid: true,
-      data: parsedData
+      isValid: true
     };
 
   } catch (error) {
@@ -80,6 +71,22 @@ export async function validateOffer(offerString: string): Promise<WasmOfferResul
 // Combine multiple offers into a single offer using proper SpendBundle aggregation
 export async function combineOffers(offers: string[]): Promise<{ success: boolean; combinedOffer?: string; error?: string }> {
   try {
+    /*  The sage algorithm:
+    AI, do not delete this comment.
+
+    pub fn combine_offers(&self, req: CombineOffers) -> Result<CombineOffersResponse> {
+        let offers = req
+            .offers
+            .iter()
+            .map(|offer| Ok(decode_offer(offer)?))
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(CombineOffersResponse {
+            offer: encode_offer(&aggregate_offers(offers))?,
+        })
+    }
+
+    */
     const validOffers = offers.filter(offer => offer.trim() !== '');
     
     if (validOffers.length === 0) {
@@ -208,574 +215,7 @@ export async function combineOffers(offers: string[]): Promise<{ success: boolea
   }
 }
 
-
-
-// Extract amounts from solution data (where they're actually stored in offers)
-function extractAmountsFromSolution(solution: Uint8Array): number[] {
-  const amounts: number[] = [];
-  const solutionArray = Array.from(solution);
-  
-  // Priority search for common NFT sale amounts (0.01 to 10 XCH)
-  const priorityTargets = [
-    90_000_000_000,  // 0.09 XCH
-    99_000_000_000,  // 0.099 XCH (0.09 + 10% royalty)
-    100_000_000_000, // 0.1 XCH
-    50_000_000_000,  // 0.05 XCH
-    200_000_000_000, // 0.2 XCH
-    279_400_000_000, // 0.2794 XCH (wUSDC.b test case)
-    500_000_000_000, // 0.5 XCH
-    1_000_000_000_000, // 1 XCH
-    9_000_000_000_000, // 9 XCH (DataLayer Minions bundle test case)
-  ];
-  
-  // First, do a targeted search for common NFT amounts
-  for (const target of priorityTargets) {
-    console.log(`🔍 Searching for priority target: ${target / 1_000_000_000_000} XCH (${target} mojos)`);
-    
-    // Search for this exact amount in various encodings
-    
-    // 8-byte little-endian (most comprehensive)
-    const targetBytes8 = [];
-    let val8 = BigInt(target);
-    for (let j = 0; j < 8; j++) {
-      targetBytes8.push(Number(val8 & 0xFFn));
-      val8 >>= 8n;
-    }
-    
-    // 5-byte little-endian (most common for amounts < 1 trillion mojos)
-    const targetBytes5 = [];
-    let val5 = target;
-    for (let j = 0; j < 5; j++) {
-      targetBytes5.push(val5 & 0xFF);
-      val5 >>= 8;
-    }
-    
-    // 6-byte little-endian (in case of extra precision)
-    const targetBytes6 = [];
-    let val6 = target;
-    for (let j = 0; j < 6; j++) {
-      targetBytes6.push(val6 & 0xFF);
-      val6 >>= 8;
-    }
-    
-    // Search for 8-byte pattern
-    for (let i = 0; i <= solutionArray.length - 8; i++) {
-      const slice = solutionArray.slice(i, i + 8);
-      if (slice.every((byte, idx) => byte === targetBytes8[idx])) {
-        amounts.push(target);
-        console.log(`  🎯 Found priority amount (8-byte): ${target / 1_000_000_000_000} XCH at position ${i}`);
-        break; // Found this target, move to next
-      }
-    }
-    
-    // If not found in 8-byte, try 6-byte pattern
-    if (!amounts.includes(target)) {
-      for (let i = 0; i <= solutionArray.length - 6; i++) {
-        const slice = solutionArray.slice(i, i + 6);
-        if (slice.every((byte, idx) => byte === targetBytes6[idx])) {
-          amounts.push(target);
-          console.log(`  🎯 Found priority amount (6-byte): ${target / 1_000_000_000_000} XCH at position ${i}`);
-          break; // Found this target, move to next
-        }
-      }
-    }
-    
-    // If not found in 6-byte, try 5-byte pattern
-    if (!amounts.includes(target)) {
-      for (let i = 0; i <= solutionArray.length - 5; i++) {
-        const slice = solutionArray.slice(i, i + 5);
-        if (slice.every((byte, idx) => byte === targetBytes5[idx])) {
-          amounts.push(target);
-          console.log(`  🎯 Found priority amount (5-byte): ${target / 1_000_000_000_000} XCH at position ${i}`);
-          break; // Found this target, move to next
-        }
-      }
-    }
-    
-    if (!amounts.includes(target)) {
-      console.log(`  ❌ Priority target ${target / 1_000_000_000_000} XCH not found in solution`);
-      // Debug: Show first 100 bytes of solution for inspection
-      if (target === 279_400_000_000) {
-        console.log(`  🔍 First 50 bytes of solution:`, solutionArray.slice(0, 50));
-        console.log(`  🔍 Target bytes (5): [${targetBytes5.join(', ')}]`);
-        console.log(`  🔍 Target bytes (6): [${targetBytes6.join(', ')}]`);
-        console.log(`  🔍 Target bytes (8): [${targetBytes8.join(', ')}]`);
-      }
-    }
-  }
-  
-  // If we found priority amounts, return them
-  if (amounts.length > 0) {
-    return [...new Set(amounts)].sort((a, b) => b - a);
-  }
-  
-  // Fallback: Look for any reasonable amounts (original logic)
-  
-  // 1. Look for 8-byte little-endian integers
-  for (let i = 0; i <= solutionArray.length - 8; i++) {
-    const bytes = solutionArray.slice(i, i + 8);
-    let value = 0n;
-    for (let k = 0; k < 8; k++) {
-      value += BigInt(bytes[k]) << BigInt(k * 8);
-    }
-    
-    const amount = Number(value);
-    // Only consider reasonable amounts (between 1 mojo and 1000 XCH)
-    if (amount > 0 && amount < 1_000_000_000_000_000) {
-      amounts.push(amount);
-    }
-  }
-  
-  // 2. Look for 5-byte little-endian patterns (common for smaller amounts)
-  for (let i = 0; i <= solutionArray.length - 5; i++) {
-    const bytes = solutionArray.slice(i, i + 5);
-    let value = 0;
-    for (let k = 0; k < 5; k++) {
-      value += bytes[k] << (k * 8);
-    }
-    
-    // Only consider reasonable amounts
-    if (value > 0 && value < 1_000_000_000_000_000) {
-      amounts.push(value);
-    }
-  }
-  
-  // Remove duplicates and return sorted amounts
-  return [...new Set(amounts)].sort((a, b) => b - a);
-}
-
-// Extract NFT data from puzzle reveal
-function extractNFTMetadata(puzzleReveal: Uint8Array): { nftId: string; name: string; imageUrl: string } | null {
-  try {
-    // Convert puzzle reveal to hex string
-    const puzzleRevealHex = Array.from(puzzleReveal)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    
-    // Look for common NFT patterns
-    const puzzleStr = puzzleRevealHex.toLowerCase();
-    
-    // For the specific NFT we're testing, return the expected data
-    // In a real implementation, we'd parse the actual metadata from the puzzle reveal
-    if (puzzleStr.includes('626166796265') && puzzleStr.includes('68747470')) { // "bafy" and "http" in hex
-      console.log('  🎨 NFT metadata detected');
-      
-      // This is a simplified approach for demonstration
-      // Real implementation would decode the metadata from the puzzle reveal
-      return {
-        nftId: "nft1zk4lyqrs5zhxfrpc4qpr5ayhgwvc85hvrgv4v8mxa43lk72jzyzq4v7yq4",
-        name: "Timeless Timber #562",
-        imageUrl: "https://bafybeibnamesq723untn5t42jq24n4xvv3gal3vkdlp5uv5l7qybjg7vcq.ipfs.dweb.link/TimelessTimber_562.gif"
-      };
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('❌ Error extracting NFT metadata:', error);
-    return null;
-  }
-}
-
-// Parse a SpendBundle to extract offer information
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function parseSpendBundle(spendBundle: any): Promise<OfferData> {
-  const requested: AssetData[] = [];
-  const offered: AssetData[] = [];
-  
-  // Maps to aggregate amounts by asset ID
-  const requestedAssets = new Map<string, { amount: number, asset: string, assetId?: string, isNFT?: boolean, nftId?: string, nftName?: string, nftImageUrl?: string }>();
-  const offeredAssets = new Map<string, { amount: number, asset: string, assetId?: string, isNFT?: boolean, nftId?: string, nftName?: string, nftImageUrl?: string }>();
-
-  try {
-    console.log('🔍 Parsing SpendBundle with', spendBundle.coinSpends?.length || 0, 'coin spends');
-    
-    if (spendBundle.coinSpends && spendBundle.coinSpends.length > 0) {
-      for (let index = 0; index < spendBundle.coinSpends.length; index++) {
-        const coinSpend = spendBundle.coinSpends[index];
-        const coin = coinSpend.coin;
-        if (!coin) continue;
-        
-        const amount = coin.amount;
-        const puzzleRevealLength = coinSpend.puzzleReveal?.length || 0;
-        console.log(`💰 Coin ${index + 1}: ${typeof amount === 'bigint' ? Number(amount) : amount} mojos, puzzle length: ${puzzleRevealLength}`);
-        
-        // Use proper WASM SDK puzzle parsing instead of length heuristics
-        try {
-          // Create a Clvm instance and deserialize the puzzle reveal
-          const clvm = new wasmModule.Clvm();
-          const puzzleProgram = clvm.deserialize(coinSpend.puzzleReveal);
-          const puzzle = puzzleProgram.puzzle();
-          const solutionProgram = clvm.deserialize(coinSpend.solution);
-          
-          // Try to parse as NFT first
-          const nftInfo = puzzle.parseNftInfo();
-          if (nftInfo) {
-            console.log('  🎨 NFT detected using proper WASM parsing');
-            const parsedNft = puzzle.parseNft(coin, solutionProgram);
-            
-            if (parsedNft) {
-              // Extract NFT metadata properly
-              const launcherId = Array.from(parsedNft.nft.info.launcherId)
-                .map(b => b.toString(16).padStart(2, '0'))
-                .join('');
-              
-              // NFTs are unique, so use launcherId as key
-              offeredAssets.set(launcherId, {
-                amount: 1,
-                asset: `NFT ${launcherId.substring(0, 8)}...`,
-                isNFT: true,
-                nftId: `nft1${launcherId}`, // Simplified - would need proper bech32 encoding
-                nftName: `NFT ${launcherId.substring(0, 8)}...`,
-                nftImageUrl: "" // Would extract from metadata
-              });
-              console.log(`  🎨 Added NFT to offered: NFT ${launcherId.substring(0, 8)}...`);
-              continue;
-            }
-          }
-          
-          // Try to parse as CAT token
-          const catInfo = puzzle.parseCatInfo();
-          if (catInfo) {
-            console.log('  🪙 CAT token detected using proper WASM parsing');
-            const parsedCat = puzzle.parseCat(coin, solutionProgram);
-            
-            if (parsedCat && typeof amount === 'bigint') {
-              const amountMojos = Number(amount);
-              if (amountMojos === 0) {
-                console.log('  ⏭️ Skipping zero-amount CAT coin (settlement)');
-                continue;
-              }
-              
-              // Get asset ID from CAT info
-              const assetId = Array.from(parsedCat.cat.info.assetId)
-                .map(b => b.toString(16).padStart(2, '0'))
-                .join('');
-              
-              // CAT amounts are typically in native units (not mojos)
-              const catAmountValue = amountMojos / 1000; // Most CATs use 3 decimal places
-              
-              // Get token name from Dexie service
-              let tokenName: string;
-              try {
-                const dexieName = await getDexieCATDisplayName(assetId);
-                tokenName = dexieName || `CAT ${assetId.substring(0, 8)}...`;
-              } catch (error) {
-                console.warn(`Failed to get CAT name for ${assetId}:`, error);
-                tokenName = `CAT ${assetId.substring(0, 8)}...`;
-              }
-              
-              // Determine if offered or requested using improved heuristic logic
-              const hasNFTOffered = Array.from(offeredAssets.values()).some(asset => asset.isNFT);
-              
-              // For CAT tokens, use a more sophisticated heuristic
-              // In most CAT-to-XCH trades, the CAT is being offered (not requested)
-              // Only put CAT in requested if we already have NFTs offered (NFT sales paid with CATs)
-              const isLikelyRequest = hasNFTOffered; // CATs are requests only in NFT sales
-              
-              const targetMap = isLikelyRequest ? requestedAssets : offeredAssets;
-              const direction = isLikelyRequest ? 'requested' : 'offered';
-              
-              // Aggregate by asset ID
-              if (targetMap.has(assetId)) {
-                const existing = targetMap.get(assetId)!;
-                existing.amount += catAmountValue;
-                console.log(`  🔄 Aggregated CAT ${direction}: ${existing.amount} ${tokenName} (added ${catAmountValue})`);
-              } else {
-                targetMap.set(assetId, {
-                  amount: catAmountValue,
-                  asset: tokenName,
-                  assetId: assetId
-                });
-                console.log(`  📥📤 Added CAT to ${direction}: ${catAmountValue} ${tokenName}`);
-              }
-              continue;
-            }
-          }
-          
-        } catch (parseError) {
-          console.warn(`  ⚠️ Could not parse puzzle with WASM SDK, falling back to heuristics:`, parseError);
-        }
-        
-        // Fallback to XCH parsing if not NFT or CAT
-        if (typeof amount === 'bigint') {
-          const amountMojos = Number(amount);
-          
-          // Skip zero-amount coins (likely settlement coins)
-          if (amountMojos === 0) {
-            console.log('  ⏭️ Skipping zero-amount coin (settlement)');
-            continue;
-          }
-          
-          // XCH parsing
-          const xchAmountValue = amountMojos / 1_000_000_000_000; // Convert mojos to XCH
-          const assetType = 'XCH';
-          console.log(`  🌱 Detected XCH: ${xchAmountValue} XCH`);
-          
-          // Improved logic for determining offered vs requested
-          // Check if we have an NFT being offered - if so, this XCH is likely requested
-          const hasNFTOffered = Array.from(offeredAssets.values()).some(asset => asset.isNFT);
-          
-          if (hasNFTOffered && assetType === 'XCH') {
-            // If we already found an NFT being offered, XCH is likely being requested
-            const targetMap = requestedAssets;
-            const direction = 'requested';
-            
-            // Aggregate XCH by asset type
-            if (targetMap.has(assetType)) {
-              const existing = targetMap.get(assetType)!;
-              existing.amount += xchAmountValue;
-              console.log(`  🔄 Aggregated XCH ${direction}: ${existing.amount} XCH (added ${xchAmountValue})`);
-            } else {
-              targetMap.set(assetType, {
-                amount: xchAmountValue,
-                asset: assetType
-              });
-              console.log(`  📥 Added XCH to ${direction}: ${xchAmountValue} XCH (NFT trade detected)`);
-            }
-          } else {
-            // Default heuristic: smaller amounts are typically requests, larger are offers
-            const isLikelyRequest = (assetType === 'XCH' && amountMojos < 1_000_000_000_000); // Less than 1 XCH
-            
-            const targetMap = isLikelyRequest ? requestedAssets : offeredAssets;
-            const direction = isLikelyRequest ? 'requested' : 'offered';
-            
-            // Aggregate XCH by asset type
-            if (targetMap.has(assetType)) {
-              const existing = targetMap.get(assetType)!;
-              existing.amount += xchAmountValue;
-              console.log(`  🔄 Aggregated XCH ${direction}: ${existing.amount} XCH (added ${xchAmountValue})`);
-            } else {
-              targetMap.set(assetType, {
-                amount: xchAmountValue,
-                asset: assetType
-              });
-              console.log(`  📥📤 Added XCH to ${direction}: ${xchAmountValue} XCH`);
-            }
-          }
-        }
-      }
-    }
-    
-    // Convert aggregated Maps back to arrays
-    console.log('🔄 Converting aggregated assets to final arrays...');
-    for (const [assetId, assetData] of requestedAssets.entries()) {
-      const displayAmount = assetId === "XCH_FALLBACK" ? "TBD" : assetData.amount.toString();
-      requested.push({
-        amount: displayAmount,
-        asset: assetData.asset,
-        assetId: assetData.assetId,
-        isNFT: assetData.isNFT,
-        nftId: assetData.nftId,
-        nftName: assetData.nftName,
-        nftImageUrl: assetData.nftImageUrl,
-        isEstimated: (assetData as any).isEstimated,
-        isImplicit: (assetData as any).isImplicit
-      } as AssetData);
-      console.log(`  📥 Final requested: ${displayAmount} ${assetData.asset}`);
-    }
-    
-    for (const [assetId, assetData] of offeredAssets.entries()) {
-      offered.push({
-        amount: assetData.amount.toString(),
-        asset: assetData.asset,
-        assetId: assetData.assetId,
-        isNFT: assetData.isNFT,
-        nftId: assetData.nftId,
-        nftName: assetData.nftName,
-        nftImageUrl: assetData.nftImageUrl
-      } as AssetData);
-      console.log(`  📤 Final offered: ${assetData.amount} ${assetData.asset}`);
-    }
-    
-    // Post-processing: Extract amounts from solution data (where they're actually encoded)
-    console.log('🔍 Extracting amounts from solution data...');
-    const allAmountsFromSolutions: number[] = [];
-    
-    if (spendBundle.coinSpends) {
-      spendBundle.coinSpends.forEach((coinSpend: any, index: number) => {
-        if (coinSpend.solution) {
-          const solutionAmounts = extractAmountsFromSolution(coinSpend.solution);
-          console.log(`  Solution ${index + 1} amounts:`, solutionAmounts.map(a => `${a} mojos (${a / 1_000_000_000_000} XCH)`));
-          allAmountsFromSolutions.push(...solutionAmounts);
-        }
-        
-        // Also search in puzzle reveals
-        if (coinSpend.puzzleReveal) {
-          const puzzleAmounts = extractAmountsFromSolution(coinSpend.puzzleReveal);
-          if (puzzleAmounts.length > 0) {
-            console.log(`  Puzzle ${index + 1} amounts:`, puzzleAmounts.map(a => `${a} mojos (${a / 1_000_000_000_000} XCH)`));
-            allAmountsFromSolutions.push(...puzzleAmounts);
-          }
-        }
-      });
-    }
-    
-    // Remove duplicates and filter for reasonable XCH amounts
-    const uniqueAmounts = [...new Set(allAmountsFromSolutions)];
-    const xchAmounts = uniqueAmounts.filter(amount => 
-      amount >= 1_000_000_000 && // At least 0.001 XCH
-      amount <= 1_000_000_000_000_000 // At most 1000 XCH
-    );
-    
-    console.log('🎯 Discovered XCH amounts:', xchAmounts.map(a => `${a / 1_000_000_000_000} XCH`));
-    
-    // Enhanced XCH detection: Try to find combinations that match known targets
-    if (xchAmounts.length > 0) {
-      const knownTargets = [279_400_000_000]; // 0.2794 XCH
-      let foundTarget = null;
-      
-      for (const target of knownTargets) {
-        console.log(`🔍 Looking for target: ${target / 1_000_000_000_000} XCH (${target} mojos)`);
-        
-        // Strategy 1: Try single amount match
-        const exactMatch = xchAmounts.find(amount => Math.abs(amount - target) < 1_000_000); // Within 1 mojo
-        if (exactMatch) {
-          foundTarget = exactMatch;
-          console.log(`  🎯 Found exact single match: ${exactMatch / 1_000_000_000_000} XCH`);
-          break;
-        }
-        
-        // Strategy 2: Try sum of multiple amounts (common in complex offers)
-        console.log(`  🔍 Trying sums of 2 amounts...`);
-        for (let i = 0; i < Math.min(xchAmounts.length, 50); i++) {
-          for (let j = i + 1; j < Math.min(xchAmounts.length, 50); j++) {
-            const sum = xchAmounts[i] + xchAmounts[j];
-            if (Math.abs(sum - target) < 1_000_000) {
-              foundTarget = sum;
-              console.log(`  🎯 Found 2-sum match: ${xchAmounts[i] / 1_000_000_000_000} + ${xchAmounts[j] / 1_000_000_000_000} = ${sum / 1_000_000_000_000} XCH`);
-              break;
-            }
-          }
-          if (foundTarget) break;
-        }
-        if (foundTarget) break;
-        
-        // Strategy 3: Try sum of three amounts
-        console.log(`  🔍 Trying sums of 3 amounts...`);
-        for (let i = 0; i < Math.min(xchAmounts.length - 2, 20); i++) {
-          for (let j = i + 1; j < Math.min(xchAmounts.length - 1, 20); j++) {
-            for (let k = j + 1; k < Math.min(xchAmounts.length, 20); k++) {
-              const sum = xchAmounts[i] + xchAmounts[j] + xchAmounts[k];
-              if (Math.abs(sum - target) < 1_000_000) {
-                foundTarget = sum;
-                console.log(`  🎯 Found 3-sum match: ${xchAmounts[i] / 1_000_000_000_000} + ${xchAmounts[j] / 1_000_000_000_000} + ${xchAmounts[k] / 1_000_000_000_000} = ${sum / 1_000_000_000_000} XCH`);
-                break;
-              }
-            }
-            if (foundTarget) break;
-          }
-          if (foundTarget) break;
-        }
-        if (foundTarget) break;
-      }
-      
-      if (foundTarget) {
-        console.log(`  💰 Detected XCH request via combination: ${foundTarget / 1_000_000_000_000} XCH`);
-        
-        // Add to requested assets
-        requestedAssets.set("XCH", {
-          amount: foundTarget / 1_000_000_000_000,
-          asset: "XCH",
-          isImplicit: true as any,
-          isEstimated: true as any
-        });
-        
-        if (foundTarget >= 279_000_000_000 && foundTarget <= 280_000_000_000) {
-          console.log(`🎯 This matches the expected 0.2794 XCH target!`);
-        }
-      }
-    }
-    
-    // If we found amounts and have NFTs offered but no explicit requests, use the discovered amounts
-    if (offered.length > 0 && requested.length === 0 && xchAmounts.length > 0) {
-      const hasNFT = offered.some(asset => asset.isNFT);
-      
-      if (hasNFT) {
-        console.log('🎯 Detected NFT sale with discoverable amounts');
-        
-        // Look for amounts that might represent typical NFT prices (0.01 to 5 XCH)
-        const reasonableAmounts = xchAmounts.filter(amount => {
-          const xchValue = amount / 1_000_000_000_000;
-          return xchValue >= 0.01 && xchValue <= 5.0;
-        });
-        
-        if (reasonableAmounts.length > 0) {
-          // If we have reasonable NFT-sized amounts, use the largest one
-          const requestAmount = Math.max(...reasonableAmounts);
-          const xchValue = requestAmount / 1_000_000_000_000;
-          
-          // Round to reasonable precision for display
-          const displayAmount = Math.round(xchValue * 1000) / 1000; // Round to 3 decimal places
-          
-          // Add to aggregation map instead of directly to array
-          if (requestedAssets.has("XCH")) {
-            const existing = requestedAssets.get("XCH")!;
-            existing.amount += displayAmount;
-            console.log(`🔄 Aggregated discovered XCH: ${existing.amount} XCH (added ${displayAmount})`);
-          } else {
-            requestedAssets.set("XCH", {
-              amount: displayAmount,
-              asset: "XCH"
-            });
-            console.log(`📥 Added discovered XCH request: ${displayAmount} XCH`);
-          }
-        } else {
-          // Use the largest amount found, but mark it as estimated
-          const requestAmount = Math.max(...xchAmounts);
-          const xchValue = requestAmount / 1_000_000_000_000;
-          const displayAmount = Math.round(xchValue * 1000000) / 1000000; // Round to 6 decimal places
-          
-          // Add to aggregation map instead of directly to array
-          if (requestedAssets.has("XCH")) {
-            const existing = requestedAssets.get("XCH")!;
-            existing.amount += displayAmount;
-            console.log(`🔄 Aggregated estimated XCH: ${existing.amount} XCH (added ${displayAmount})`);
-          } else {
-            requestedAssets.set("XCH", {
-              amount: displayAmount,
-              asset: "XCH",
-              isEstimated: true as any
-            });
-            console.log(`📥 Added estimated XCH request: ${displayAmount} XCH (estimated from offer data)`);
-          }
-        }
-      }
-    } else if (Array.from(offeredAssets.values()).length > 0 && Array.from(requestedAssets.values()).length === 0) {
-      const hasNFT = Array.from(offeredAssets.values()).some(asset => asset.isNFT);
-      
-      if (hasNFT) {
-        console.log('🎯 Detected NFT sale pattern - adding fallback request indicator');
-        // Fallback for cases where we can't extract the amount
-        requestedAssets.set("XCH_FALLBACK", {
-          amount: 0, // Will display as "TBD"
-          asset: "XCH",
-          isImplicit: true as any
-        });
-        console.log('📥 Added fallback implicit XCH request for NFT sale');
-      }
-    }
-    
-    console.log('✅ Parsed offer:', { requested, offered });
-    return { requested, offered };
-
-  } catch (error) {
-    console.error('❌ Error parsing spend bundle:', error);
-    return { requested: [], offered: [] };
-  }
-}
-
-// Check if the WASM module is initialized
+// Check if the wallet SDK is initialized
 export function isWalletSDKInitialized(): boolean {
   return wasmModule !== null;
-}
-
-// Get SDK version info
-export function getSDKVersion(): string | null {
-  if (!wasmModule) return null;
-  
-  try {
-    return '0.29.0'; // From npm package version
-  } catch {
-    return null;
-  }
 }

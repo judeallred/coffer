@@ -1,26 +1,10 @@
 // Core type definitions for Coffer
 
-export interface AssetData {
-  amount: string;
-  asset: string;
-  icon?: string;
-  isNFT?: boolean;
-  nftId?: string;
-  nftName?: string;
-  nftImageUrl?: string;
-}
-
-export interface OfferData {
-  requested?: AssetData[];
-  offered?: AssetData[];
-}
-
 export interface Offer {
   id: string;
   content: string;
   isValid: boolean;
   error?: string;
-  parsedData?: OfferData;
 }
 
 export interface LogEntry {
