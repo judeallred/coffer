@@ -68,7 +68,7 @@ body {
 /* Header */
 .header {
   background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid rgba(0, 255, 0, 0.3);
   padding: var(--spacing-lg);
   box-shadow: var(--shadow-sm);
 }
@@ -81,6 +81,7 @@ body {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--spacing-md);
+  padding-left: var(--spacing-lg);
 }
 
 .logo {
@@ -546,6 +547,10 @@ body {
 
 /* Responsive Design for Simplified UI */
 @media (max-width: 767px) {
+  .header-content {
+    padding-left: calc(var(--spacing-md) + var(--spacing-md) + var(--spacing-md));
+  }
+
   .simplified-content {
     padding: var(--spacing-md);
     gap: var(--spacing-lg);

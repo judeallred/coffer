@@ -1,6 +1,6 @@
 export function Header(): JSX.Element {
   return (
-    <header className='header-container'>
+    <header className='header'>
       <div className='header-content'>
         <div className='logo'>
           <h1 className='title'>Coffer</h1>
