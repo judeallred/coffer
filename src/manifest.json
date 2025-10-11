@@ -1,7 +1,7 @@
 {
   "name": "Coffer - Chia Offer Combiner",
   "short_name": "Coffer",
-  "description": "A professional web application for combining Chia offers with WASM-powered validation",
+  "description": "A simple utility website for combining Chia offers",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#1a1a1a",
