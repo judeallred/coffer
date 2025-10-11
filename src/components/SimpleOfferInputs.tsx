@@ -21,11 +21,11 @@ function extractOfferIdFromUrl(url: string): string | null {
     // https://dexie.space/offers/AqtaxKUF7UV4WKAYGr24frVMzt6xWWahTc4Xwc8EmhiK
     const urlPattern = /^https?:\/\/(mintgarden\.io|dexie\.space)\/offers\/([A-Za-z0-9+/]{44})$/;
     const match = url.match(urlPattern);
-    
+
     if (match && match[2]) {
       return match[2];
     }
-    
+
     return null;
   } catch {
     return null;
@@ -211,7 +211,10 @@ export function SimpleOfferInputs({
         <div className='instructions-header'>
           <div className='instructions-text'>
             <h3>Paste Chia offers below</h3>
-            <p>You can paste <code>offer1...</code> strings, offer ids, or Dexie/MintGarden offer page urls.</p>
+            <p>
+              You can paste <code>offer1...</code>{' '}
+              strings, offer ids, or Dexie/MintGarden offer page urls.
+            </p>
             <p>Each offer will be automatically validated and combined</p>
           </div>
           {offers.length > 0 && (

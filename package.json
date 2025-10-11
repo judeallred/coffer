@@ -10,13 +10,15 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "deno task dev",
-    "build": "deno task build"
+    "build": "deno task build",
+    "prepare": "husky"
   },
   "dependencies": {
     "chia-wallet-sdk-wasm": "^0.29.0"
   },
   "devDependencies": {
     "esbuild": "^0.19.12",
+    "husky": "^9.1.7",
     "playwright": "^1.45.0"
   }
 }

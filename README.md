@@ -198,6 +198,22 @@ deno task dev
 # Expected: Professional offer interface with real CAT token names
 ```
 
+### Pre-commit Hooks
+
+The project uses Husky to automatically run CI checks before each commit:
+
+- **Auto-formatting**: `deno fmt` automatically fixes code style issues
+- **Linting**: `deno lint` checks for code quality issues
+- **Build verification**: Ensures the project builds successfully
+
+These checks run automatically when you commit. To manually run them:
+
+```bash
+.husky/pre-commit
+```
+
+The hooks are installed automatically when you run `pnpm install` via the `prepare` script.
+
 ## Using Coffer
 
 ### Adding Offers

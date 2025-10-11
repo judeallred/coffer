@@ -1,0 +1,34 @@
+echo "🔍 Running pre-commit checks..."
+echo ""
+
+# Auto-fix formatting
+echo "📝 Auto-fixing code formatting..."
+deno fmt --ignore=src/wasm,node_modules,dist,src/components/ToastContainer.tsx,src/components/ErrorLog.tsx
+if [ $? -ne 0 ]; then
+  echo "❌ Formatting failed!"
+  exit 1
+fi
+echo "✅ Formatting fixed"
+echo ""
+
+# Check linting
+echo "🔎 Checking lint rules..."
+deno lint --ignore=src/wasm,node_modules,dist
+if [ $? -ne 0 ]; then
+  echo "❌ Linting failed! Please fix the errors above."
+  exit 1
+fi
+echo "✅ Linting passed"
+echo ""
+
+# Build project
+echo "🏗️  Building project..."
+deno task build > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+  echo "❌ Build failed! Run 'deno task build' to see details."
+  exit 1
+fi
+echo "✅ Build succeeded"
+echo ""
+
+echo "✨ All pre-commit checks passed!"

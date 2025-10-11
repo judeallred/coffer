@@ -9,7 +9,7 @@ const urlsToCache = [
   './styles/global.css',
   './favicon.svg',
   './favicon-32x32.png',
-  './favicon.ico'
+  './favicon.ico',
 ];
 
 // Install event - cache essential resources
@@ -22,7 +22,7 @@ self.addEventListener('install', (event) => {
       })
       .catch((error) => {
         console.log('Service Worker: Cache installation failed', error);
-      })
+      }),
   );
   // Skip waiting to activate immediately
   self.skipWaiting();
@@ -38,9 +38,9 @@ self.addEventListener('activate', (event) => {
             console.log('Service Worker: Clearing old cache', cacheName);
             return caches.delete(cacheName);
           }
-        })
+        }),
       );
-    })
+    }),
   );
   // Take control of all clients immediately
   return self.clients.claim();
@@ -53,11 +53,11 @@ self.addEventListener('fetch', (event) => {
       .then((response) => {
         // Clone the response before caching
         const responseToCache = response.clone();
-        
+
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, responseToCache);
         });
-        
+
         return response;
       })
       .catch(() => {
@@ -72,11 +72,10 @@ self.addEventListener('fetch', (event) => {
               status: 503,
               statusText: 'Service Unavailable',
               headers: new Headers({
-                'Content-Type': 'text/plain'
-              })
+                'Content-Type': 'text/plain',
+              }),
             });
           });
-      })
+      }),
   );
 });
-

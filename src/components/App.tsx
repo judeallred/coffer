@@ -19,11 +19,11 @@ function extractOfferIdFromUrl(url: string): string | null {
     // https://dexie.space/offers/AqtaxKUF7UV4WKAYGr24frVMzt6xWWahTc4Xwc8EmhiK
     const urlPattern = /^https?:\/\/(mintgarden\.io|dexie\.space)\/offers\/([A-Za-z0-9+/]{44})$/;
     const match = url.match(urlPattern);
-    
+
     if (match && match[2]) {
       return match[2];
     }
-    
+
     return null;
   } catch {
     return null;
@@ -244,7 +244,7 @@ export function App(): JSX.Element {
   // Global paste detection
   useEffect(() => {
     let lastPasteTime = 0;
-    
+
     const handleGlobalPaste = async (e: ClipboardEvent): Promise<void> => {
       try {
         // Prevent double-paste: skip if paste happened within last 100ms
@@ -256,7 +256,9 @@ export function App(): JSX.Element {
 
         // Skip if pasting into an input field (let the field handler deal with it)
         const target = e.target as HTMLElement;
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        if (
+          target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+        ) {
           return;
         }
 
@@ -267,7 +269,7 @@ export function App(): JSX.Element {
 
         // Check if it's a URL with an offer ID
         const offerIdFromUrl = extractOfferIdFromUrl(content);
-        
+
         // Check if it's an offer string, offer ID, or URL
         const isOffer = content.startsWith('offer1');
         const isPotentialOfferId = isOfferId(content) || offerIdFromUrl !== null;
