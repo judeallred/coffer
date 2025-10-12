@@ -949,7 +949,8 @@
         "npm:chia-wallet-sdk-wasm@0.29",
         "npm:esbuild@~0.19.12",
         "npm:husky@^9.1.7",
-        "npm:playwright@^1.45.0"
+        "npm:playwright@^1.45.0",
+        "npm:puppeteer@^24.24.0"
       ]
     }
   }
