@@ -11,7 +11,7 @@ export async function initWasm() {
 
   try {
     // Fetch the WASM file
-    const wasmPath = "/wasm/chia_wallet_sdk_wasm_bg.wasm";
+    const wasmPath = "./chia_wallet_sdk_wasm_bg.wasm";
     const wasmResponse = await fetch(wasmPath);
     
     if (!wasmResponse.ok) {
