@@ -4,11 +4,13 @@ import type { Offer } from '../types/index.ts';
 interface SimpleCombinedOutputProps {
   offers: Offer[];
   onLogError: (message: string, type?: 'error' | 'warning' | 'info') => void;
+  disabled?: boolean;
 }
 
 export function SimpleCombinedOutput({
   offers,
   onLogError,
+  disabled = false,
 }: SimpleCombinedOutputProps): JSX.Element {
   const [combinedOffer, setCombinedOffer] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -20,7 +22,7 @@ export function SimpleCombinedOutput({
   // Update combined offer when valid offers change
   useEffect(() => {
     const updateCombinedOffer = async () => {
-      if (validOffers.length === 0) {
+      if (disabled || validOffers.length === 0) {
         setCombinedOffer('');
         return;
       }
@@ -47,7 +49,7 @@ export function SimpleCombinedOutput({
     };
 
     updateCombinedOffer();
-  }, [validOffers.length, validOffers.map((o) => o.content).join(','), onLogError]);
+  }, [disabled, validOffers.length, validOffers.map((o) => o.content).join(','), onLogError]);
 
   const handleCopyToClipboard = async () => {
     if (!combinedOffer) return;

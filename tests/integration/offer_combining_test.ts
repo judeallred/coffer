@@ -159,8 +159,6 @@ Deno.test({
       }
     });
   },
-  sanitizeOps: false,
-  sanitizeResources: false,
 });
 
 // Performance test
@@ -184,8 +182,6 @@ Deno.test({
     const maxExpectedTime = 5000; // 5s for WASM operations
     assertEquals(duration < maxExpectedTime, true, `Should complete within ${maxExpectedTime}ms`);
   },
-  sanitizeOps: false,
-  sanitizeResources: false,
 });
 
 // Test with user-provided offers
@@ -223,6 +219,4 @@ Deno.test({
       console.log(result.combinedOffer);
     });
   },
-  sanitizeOps: false,
-  sanitizeResources: false,
 });

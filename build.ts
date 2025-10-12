@@ -15,11 +15,8 @@ try {
 const externalImportPlugin: esbuild.Plugin = {
   name: 'external-imports',
   setup(build): void {
-    // Mark preact and styled-components as external
+    // Mark preact as external
     build.onResolve({ filter: /^preact/ }, (args) => {
-      return { path: args.path, external: true };
-    });
-    build.onResolve({ filter: /^styled-components/ }, (args) => {
       return { path: args.path, external: true };
     });
     // Handle CSS imports - just skip them

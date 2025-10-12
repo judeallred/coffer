@@ -5,68 +5,13 @@ import { SimpleCombinedOutput } from './SimpleCombinedOutput.tsx';
 import { ErrorLog } from './ErrorLog.tsx';
 import { About } from './About.tsx';
 import type { LogEntry, Offer } from '../types/index.ts';
-
-// Helper function to detect if a string is a 44-character base64 offer ID
-function isOfferId(value: string): boolean {
-  return value.length === 44 && !value.startsWith('offer1') && /^[A-Za-z0-9+/]+$/.test(value);
-}
-
-// Helper function to extract offer ID from MintGarden or Dexie URL
-function extractOfferIdFromUrl(url: string): string | null {
-  try {
-    // Match URLs like:
-    // https://mintgarden.io/offers/AqtaxKUF7UV4WKAYGr24frVMzt6xWWahTc4Xwc8EmhiK
-    // https://dexie.space/offers/AqtaxKUF7UV4WKAYGr24frVMzt6xWWahTc4Xwc8EmhiK
-    const urlPattern = /^https?:\/\/(mintgarden\.io|dexie\.space)\/offers\/([A-Za-z0-9+/]{44})$/;
-    const match = url.match(urlPattern);
-
-    if (match && match[2]) {
-      return match[2];
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// Helper function to fetch offer string from offer ID
-async function fetchOfferFromId(offerId: string): Promise<string | null> {
-  // Try Dexie API first
-  try {
-    const dexieResponse = await fetch(`https://api.dexie.space/v1/offers/${offerId}`);
-    if (dexieResponse.ok) {
-      const data = await dexieResponse.json();
-      if (data.success && data.offer && data.offer.offer) {
-        return data.offer.offer;
-      }
-    }
-  } catch (error) {
-    console.warn('Dexie API failed:', error);
-  }
-
-  // Try MintGarden API as fallback
-  try {
-    const mintgardenResponse = await fetch(`https://api.mintgarden.io/offers/${offerId}/bech32`);
-    if (mintgardenResponse.ok) {
-      const offerString = await mintgardenResponse.text();
-      // Remove quotes if present
-      const cleanedOffer = offerString.replace(/^"|"$/g, '');
-      if (cleanedOffer.startsWith('offer1')) {
-        return cleanedOffer;
-      }
-    }
-  } catch (error) {
-    console.warn('MintGarden API failed:', error);
-  }
-
-  return null;
-}
+import { extractOfferIdFromUrl, fetchOfferFromIdCached, isOfferId } from '../utils/offerUtils.ts';
 
 export function App(): JSX.Element {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [errorLogs, setErrorLogs] = useState<LogEntry[]>([]);
   const [isDebugMode, setIsDebugMode] = useState<boolean>(false);
+  const [isWasmInitialized, setIsWasmInitialized] = useState<boolean>(false);
 
   // Expose debug mode toggle to window for console access
   useEffect(() => {
@@ -86,6 +31,14 @@ export function App(): JSX.Element {
   }, []);
 
   const validateOffer = async (content: string): Promise<{ isValid: boolean; error?: string }> => {
+    // Wait for WASM to be initialized
+    if (!isWasmInitialized) {
+      return {
+        isValid: false,
+        error: 'WASM module is still initializing. Please wait...',
+      };
+    }
+
     try {
       const { validateOffer: validateOfferSDK } = await import('../services/walletSDK.ts');
       const result = validateOfferSDK(content);
@@ -192,9 +145,13 @@ export function App(): JSX.Element {
     setErrorLogs((prev) => [...prev, newLog]);
   };
 
+  const clearLogs = (): void => {
+    setErrorLogs([]);
+  };
+
   // Revalidate all offers
   const revalidateAllOffers = async (): Promise<void> => {
-    if (offers.length === 0) return;
+    if (offers.length === 0 || !isWasmInitialized) return;
 
     const revalidatedOffers = await Promise.all(
       offers.map(async (offer) => {
@@ -241,23 +198,28 @@ export function App(): JSX.Element {
         const { initWalletSDK } = await import('../services/walletSDK.ts');
         await initWalletSDK();
 
+        setIsWasmInitialized(true);
         logError('Chia Wallet SDK WASM initialized successfully', 'info');
       } catch (error) {
         logError(`Failed to initialize Chia Wallet SDK: ${error}`, 'error');
+        setIsWasmInitialized(false);
       }
     };
 
     initSDK();
   }, []);
 
-  // Revalidate all offers every 20ms
+  // Revalidate all offers periodically (every 500ms)
   useEffect(() => {
+    // Don't start revalidation until WASM is initialized
+    if (!isWasmInitialized) return;
+
     const interval = setInterval(() => {
       revalidateAllOffers();
-    }, 20);
+    }, 500);
 
     return () => clearInterval(interval);
-  }, [offers]);
+  }, [offers, isWasmInitialized]);
 
   // Global paste detection
   useEffect(() => {
@@ -265,6 +227,12 @@ export function App(): JSX.Element {
 
     const handleGlobalPaste = async (e: ClipboardEvent): Promise<void> => {
       try {
+        // Check if WASM is initialized before processing paste
+        if (!isWasmInitialized) {
+          logError('Please wait for WASM module to initialize before adding offers', 'warning');
+          return;
+        }
+
         // Prevent double-paste: skip if paste happened within last 100ms
         const now = Date.now();
         if (now - lastPasteTime < 100) {
@@ -300,7 +268,7 @@ export function App(): JSX.Element {
             const offerIdToFetch = offerIdFromUrl || content;
             logError(`Fetching offer from ${offerIdFromUrl ? 'URL' : 'ID'}...`, 'info');
 
-            const fetchedOffer = await fetchOfferFromId(offerIdToFetch);
+            const fetchedOffer = await fetchOfferFromIdCached(offerIdToFetch);
             if (fetchedOffer) {
               content = fetchedOffer;
               logError('Offer fetched successfully!', 'info');
@@ -335,7 +303,7 @@ export function App(): JSX.Element {
     return () => {
       document.removeEventListener('paste', handleGlobalPaste);
     };
-  }, [offers]); // Re-register when offers change to check for duplicates
+  }, [offers, isWasmInitialized]); // Re-register when offers or init state changes
 
   // Global copy handler for Ctrl+C
   useEffect(() => {
@@ -352,6 +320,12 @@ export function App(): JSX.Element {
 
         // If there's a text selection, let normal copy work
         if (globalThis.getSelection()?.toString().trim()) {
+          return;
+        }
+
+        // Check if WASM is initialized
+        if (!isWasmInitialized) {
+          logError('WASM module is still initializing. Please wait...', 'warning');
           return;
         }
 
@@ -384,26 +358,33 @@ export function App(): JSX.Element {
     return () => {
       document.removeEventListener('keydown', handleGlobalCopy);
     };
-  }, [offers]); // Re-register when offers change
+  }, [offers, isWasmInitialized]); // Re-register when offers or init state changes
 
   return (
     <div className='app-container'>
       <Header />
       <main className='main-content'>
         <div className='simplified-content'>
+          {!isWasmInitialized && (
+            <div className='loading-notice'>
+              ⏳ Initializing WASM module... Please wait.
+            </div>
+          )}
           <SimpleOfferInputs
             offers={offers}
             onAddOffer={addOffer}
             onDeleteOffer={deleteOffer}
             onClearAll={clearAllOffers}
+            disabled={!isWasmInitialized}
           />
           <SimpleCombinedOutput
             offers={offers}
             onLogError={logError}
+            disabled={!isWasmInitialized}
           />
         </div>
       </main>
-      <ErrorLog logs={errorLogs} isDebugMode={isDebugMode} />
+      <ErrorLog logs={errorLogs} isDebugMode={isDebugMode} onClearLogs={clearLogs} />
       <About />
     </div>
   );

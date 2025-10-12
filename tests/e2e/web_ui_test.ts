@@ -44,9 +44,13 @@ Deno.test({
       // Launch Puppeteer browser
       console.log('🚀 Launching Puppeteer browser...');
       const isCI = Deno.env.get('CI') === 'true';
-      browser = await puppeteer.launch({
+      const launchOptions: {
+        headless: 'new';
+        executablePath?: string;
+        args: string[];
+        protocolTimeout: number;
+      } = {
         headless: 'new',
-        executablePath: isCI ? '/usr/bin/chromium-browser' : undefined,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -54,21 +58,36 @@ Deno.test({
           '--disable-gpu',
         ],
         protocolTimeout: 60000,
-      });
+      };
+
+      if (isCI) {
+        launchOptions.executablePath = '/usr/bin/chromium-browser';
+      }
+
+      browser = await puppeteer.launch(launchOptions);
 
       page = await browser.newPage();
+
+      // Track console errors for assertions
+      const consoleErrors: string[] = [];
+      const pageErrors: Error[] = [];
 
       // Enable console logging from the page
       page.on('console', (msg: { type: () => string; text: () => string }) => {
         const type = msg.type();
-        if (type === 'error' || type === 'warning') {
-          console.log(`Browser ${type}:`, msg.text());
+        const text = msg.text();
+        if (type === 'error') {
+          console.log(`Browser ${type}:`, text);
+          consoleErrors.push(text);
+        } else if (type === 'warning') {
+          console.log(`Browser ${type}:`, text);
         }
       });
 
       // Capture page errors
       page.on('pageerror', (error: Error) => {
         console.error('Page error:', error);
+        pageErrors.push(error);
       });
 
       await t.step('should load and render the web application', async () => {
@@ -131,13 +150,63 @@ Deno.test({
       });
 
       await t.step('should have no JavaScript errors on page load', async () => {
-        // Check for JavaScript errors by evaluating window.onerror
-        const hasErrors = await page!.evaluate(() => {
-          return (window as { __hasJSErrors?: boolean }).__hasJSErrors || false;
+        // Wait a bit for any async errors to surface
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Check console errors
+        const hasCriticalErrors = consoleErrors.some((error) =>
+          error.includes('CRITICAL') ||
+          error.includes('Failed to initialize') ||
+          error.includes('WASM module not initialized')
+        );
+
+        if (hasCriticalErrors) {
+          console.error('❌ Critical errors found in console:');
+          consoleErrors.forEach((error) => console.error('  -', error));
+        }
+
+        // Check page errors
+        if (pageErrors.length > 0) {
+          console.error('❌ Page errors found:');
+          pageErrors.forEach((error) => console.error('  -', error.message));
+        }
+
+        assertEquals(
+          hasCriticalErrors,
+          false,
+          'Page should not have critical initialization errors',
+        );
+        assertEquals(pageErrors.length, 0, 'Page should not have unhandled errors');
+        console.log('✅ No critical JavaScript errors detected');
+      });
+
+      await t.step('should initialize WASM module successfully', async () => {
+        // Wait for WASM initialization
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Check if the loading notice has disappeared (meaning WASM initialized)
+        const loadingNoticeVisible = await page!.evaluate(() => {
+          const notice = document.querySelector('.loading-notice');
+          if (!notice) return false;
+          const rect = notice.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
         });
 
-        assertEquals(hasErrors, false, 'Page should not have JavaScript errors');
-        console.log('✅ No JavaScript errors detected');
+        assertEquals(
+          loadingNoticeVisible,
+          false,
+          'Loading notice should disappear after WASM initialization',
+        );
+
+        // Check if inputs are enabled
+        const inputsEnabled = await page!.evaluate(() => {
+          const input = document.querySelector('.offer-input') as HTMLInputElement;
+          return input ? !input.disabled : false;
+        });
+
+        assert(inputsEnabled, 'Input fields should be enabled after WASM initialization');
+
+        console.log('✅ WASM module initialized successfully');
       });
 
       await t.step('should render QR code image correctly', async () => {
@@ -242,6 +311,4 @@ Deno.test({
       }
     }
   },
-  sanitizeOps: false,
-  sanitizeResources: false,
 });

@@ -86,68 +86,6 @@ function transformImports(code: string): string {
     },
   );
 
-  // Remove styled-components imports and add a mock styled function
-  const hasStyledImport = /import\s+[^'"]*from\s+["']styled-components["']/.test(transformedCode) ||
-    /import\s+["']styled-components["']/.test(transformedCode);
-
-  transformedCode = transformedCode.replace(
-    /import\s+[^'"]*from\s+["']styled-components["'];?\s*\n?/g,
-    '',
-  );
-  transformedCode = transformedCode.replace(/import\s+["']styled-components["'];?\s*\n?/g, '');
-
-  // If the file had styled-components imports, add a mock styled function
-  if (hasStyledImport) {
-    const mockStyled = `
-// Mock styled-components replacement - returns regular HTML elements
-import { h } from "https://esm.sh/preact@10.19.2";
-
-function styled(tag) {
-  return function(templateStrings, ...values) {
-    // Return a component that renders the base HTML tag using Preact's h function
-    return function(props) {
-      const { children, className = '', ...otherProps } = props || {};
-      // Remove $ prefixed props (transient props) used by styled-components
-      const cleanProps = {};
-      for (const key in otherProps) {
-        if (!key.startsWith('$')) {
-          cleanProps[key] = otherProps[key];
-        }
-      }
-      return h(tag, { ...cleanProps, className }, children);
-    };
-  };
-}
-// Add common HTML element shortcuts
-styled.div = styled('div');
-styled.section = styled('section');
-styled.header = styled('header');
-styled.main = styled('main');
-styled.h1 = styled('h1');
-styled.h2 = styled('h2');
-styled.h3 = styled('h3');
-styled.h4 = styled('h4');
-styled.h5 = styled('h5');
-styled.h6 = styled('h6');
-styled.p = styled('p');
-styled.span = styled('span');
-styled.button = styled('button');
-styled.textarea = styled('textarea');
-styled.input = styled('input');
-styled.form = styled('form');
-styled.label = styled('label');
-styled.ul = styled('ul');
-styled.li = styled('li');
-styled.nav = styled('nav');
-styled.aside = styled('aside');
-styled.article = styled('article');
-styled.footer = styled('footer');
-styled.a = styled('a');
-styled.img = styled('img');
-`;
-    transformedCode = mockStyled + transformedCode;
-  }
-
   // Remove CSS imports since browsers can't handle them directly via ES modules
   // We'll inject CSS via <link> tags instead
   transformedCode = transformedCode.replace(/import\s+["'][^"']*\.css["'];?\s*\n?/g, '');
@@ -236,6 +174,31 @@ await serve(
             headers: { 'content-type': 'application/javascript; charset=utf-8' },
           },
         );
+      }
+    }
+
+    // Handle WASM files specifically - serve from wasm directory
+    if (url.pathname.endsWith('.wasm') || url.pathname.includes('chia_wallet_sdk_wasm')) {
+      try {
+        // Try to serve from src/wasm/ directory
+        const wasmPath = url.pathname.startsWith('/wasm/')
+          ? `./src${url.pathname}`
+          : `./src/wasm${url.pathname}`;
+        const file = await Deno.readFile(wasmPath);
+        const mimeType = getMimeType(url.pathname);
+
+        return new Response(file, {
+          headers: {
+            'content-type': mimeType,
+            'access-control-allow-origin': '*',
+          },
+        });
+      } catch (error) {
+        console.error(`❌ Failed to serve WASM file ${url.pathname}:`, error);
+        return new Response(`WASM file not found: ${url.pathname}`, {
+          status: 404,
+          headers: { 'content-type': 'text/plain' },
+        });
       }
     }
 

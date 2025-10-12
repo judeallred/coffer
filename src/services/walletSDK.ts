@@ -1,18 +1,19 @@
 // Chia Wallet SDK WASM integration for offer combination only
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let wasmModule: any = null;
+import type { ChiaWalletSDK } from '../types/wasm.ts';
+
+let wasmModule: ChiaWalletSDK | null = null;
 
 // Initialize the WASM module from local files
 export async function initWalletSDK(): Promise<void> {
   try {
     // Import the local WASM module
-    const chiaSDK = await import('chia-wallet-sdk-wasm');
+    const chiaSDK = await import('chia-wallet-sdk-wasm') as unknown as ChiaWalletSDK;
 
     // Initialize WASM if needed
-    if (typeof chiaSDK.default === 'function') {
-      await (chiaSDK.default as any)(); // Call the default init function
-    } else if ((chiaSDK as any).init && typeof (chiaSDK as any).init === 'function') {
-      await (chiaSDK as any).init(); // Alternative init function
+    if (chiaSDK.default && typeof chiaSDK.default === 'function') {
+      await chiaSDK.default();
+    } else if (chiaSDK.init && typeof chiaSDK.init === 'function') {
+      await chiaSDK.init();
     } else {
       // WASM module might already be initialized, just log warning
       console.warn('⚠️ No init function found, assuming WASM is already initialized');

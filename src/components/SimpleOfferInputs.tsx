@@ -1,68 +1,13 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Offer } from '../types/index.ts';
+import { extractOfferIdFromUrl, fetchOfferFromIdCached, isOfferId } from '../utils/offerUtils.ts';
 
 interface SimpleOfferInputsProps {
   offers: Offer[];
   onAddOffer: (content: string) => Promise<void>;
   onDeleteOffer: (id: string) => Promise<void>;
   onClearAll: () => void;
-}
-
-// Helper function to detect if a string is a 44-character base64 offer ID
-function isOfferId(value: string): boolean {
-  return value.length === 44 && !value.startsWith('offer1') && /^[A-Za-z0-9+/]+$/.test(value);
-}
-
-// Helper function to extract offer ID from MintGarden or Dexie URL
-function extractOfferIdFromUrl(url: string): string | null {
-  try {
-    // Match URLs like:
-    // https://mintgarden.io/offers/AqtaxKUF7UV4WKAYGr24frVMzt6xWWahTc4Xwc8EmhiK
-    // https://dexie.space/offers/AqtaxKUF7UV4WKAYGr24frVMzt6xWWahTc4Xwc8EmhiK
-    const urlPattern = /^https?:\/\/(mintgarden\.io|dexie\.space)\/offers\/([A-Za-z0-9+/]{44})$/;
-    const match = url.match(urlPattern);
-
-    if (match && match[2]) {
-      return match[2];
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// Helper function to fetch offer string from offer ID
-async function fetchOfferFromId(offerId: string): Promise<string | null> {
-  // Try Dexie API first
-  try {
-    const dexieResponse = await fetch(`https://api.dexie.space/v1/offers/${offerId}`);
-    if (dexieResponse.ok) {
-      const data = await dexieResponse.json();
-      if (data.success && data.offer && data.offer.offer) {
-        return data.offer.offer;
-      }
-    }
-  } catch (error) {
-    console.warn('Dexie API failed:', error);
-  }
-
-  // Try MintGarden API as fallback
-  try {
-    const mintgardenResponse = await fetch(`https://api.mintgarden.io/offers/${offerId}/bech32`);
-    if (mintgardenResponse.ok) {
-      const offerString = await mintgardenResponse.text();
-      // Remove quotes if present
-      const cleanedOffer = offerString.replace(/^"|"$/g, '');
-      if (cleanedOffer.startsWith('offer1')) {
-        return cleanedOffer;
-      }
-    }
-  } catch (error) {
-    console.warn('MintGarden API failed:', error);
-  }
-
-  return null;
+  disabled?: boolean;
 }
 
 export function SimpleOfferInputs({
@@ -70,6 +15,7 @@ export function SimpleOfferInputs({
   onAddOffer,
   onDeleteOffer,
   onClearAll,
+  disabled = false,
 }: SimpleOfferInputsProps): JSX.Element {
   const [inputValues, setInputValues] = useState<string[]>(['']);
 
@@ -108,7 +54,7 @@ export function SimpleOfferInputs({
 
       // Check if it's an offer ID or URL and fetch it
       if (offerIdToFetch) {
-        const fetchedOffer = await fetchOfferFromId(offerIdToFetch);
+        const fetchedOffer = await fetchOfferFromIdCached(offerIdToFetch);
         if (fetchedOffer) {
           offerToAdd = fetchedOffer;
           setInputValues((prev) => {
@@ -126,7 +72,7 @@ export function SimpleOfferInputs({
     }
   };
 
-  const handleKeyPress = (_index: number, e: KeyboardEvent) => {
+  const handleKeyPress = (_index: number, e: KeyboardEvent): void => {
     if (e.key === 'Enter') {
       const input = e.target as HTMLInputElement;
       input.blur();
@@ -157,7 +103,7 @@ export function SimpleOfferInputs({
 
       // Check if it's an offer ID or URL and fetch it
       if (offerIdToFetch) {
-        const fetchedOffer = await fetchOfferFromId(offerIdToFetch);
+        const fetchedOffer = await fetchOfferFromIdCached(offerIdToFetch);
         if (fetchedOffer) {
           offerToAdd = fetchedOffer;
           setInputValues((prev) => {
@@ -249,6 +195,7 @@ export function SimpleOfferInputs({
                   onKeyPress={(e) => handleKeyPress(index, e)}
                   placeholder={isLastInput ? 'Paste offer here...' : 'Offer string...'}
                   className={`offer-input ${status}`}
+                  disabled={disabled}
                 />
                 <div className='input-status'>
                   {getStatusIcon(status)}
