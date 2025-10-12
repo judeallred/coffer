@@ -3,7 +3,7 @@ echo ""
 
 # Auto-fix formatting
 echo "📝 Auto-fixing code formatting..."
-deno fmt --ignore=src/wasm,node_modules,dist,src/components/ToastContainer.tsx,src/components/ErrorLog.tsx
+deno task format
 if [ $? -ne 0 ]; then
   echo "❌ Formatting failed!"
   exit 1
@@ -13,7 +13,7 @@ echo ""
 
 # Check linting
 echo "🔎 Checking lint rules..."
-deno lint --ignore=src/wasm,node_modules,dist
+deno task lint
 if [ $? -ne 0 ]; then
   echo "❌ Linting failed! Please fix the errors above."
   exit 1

@@ -134,7 +134,7 @@ Deno.test({
 
       await t.step('should render QR code image correctly', async () => {
         // Scroll to the bottom to make sure the about section is loaded
-        await page!.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        await page!.evaluate(() => globalThis.scrollTo(0, document.body.scrollHeight));
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         const qrCodeImage = await page!.evaluate(() => {

@@ -20,6 +20,9 @@
     "puppeteer": "npm:puppeteer@21.11.0"
   },
   "tasks": {
+    "lint": "deno lint --ignore=src/wasm,node_modules,dist",
+    "format": "deno fmt --check --ignore=src/wasm,node_modules,dist",
+    "fmt": "deno task format",
     "dev": "deno run --allow-net --allow-read --allow-write --allow-env --allow-run --watch dev.ts",
     "build": "deno run --allow-all build.ts",
     "test": "deno test --allow-all",

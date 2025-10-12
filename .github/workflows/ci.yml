@@ -38,10 +38,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check formatting
-        run: deno fmt --check --ignore=src/wasm,node_modules,dist,src/components/ToastContainer.tsx,src/components/ErrorLog.tsx
+        run: deno task format
 
       - name: Run linter
-        run: deno lint --ignore=src/wasm,node_modules,dist
+        run: deno task lint
 
       - name: Build project (includes type checking)
         run: deno task build
