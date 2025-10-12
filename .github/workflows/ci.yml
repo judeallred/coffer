@@ -40,16 +40,11 @@ jobs:
       - name: Install Deno dependencies
         run: deno install
 
-      - name: Install Chrome for Puppeteer
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser
-
       - name: Run linter
         run: deno task lint
 
       - name: Build project (includes type checking)
         run: deno task build
 
-      - name: Run tests
-        run: deno task test
+      - name: Run integration tests
+        run: deno task test:integration

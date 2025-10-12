@@ -108,9 +108,23 @@ try {
   console.warn('  ⚠ Failed to copy service worker:', error);
 }
 
+// Copy WASM files
+try {
+  const wasmFiles = [
+    'chia_wallet_sdk_wasm_bg.wasm',
+    'chia_wallet_sdk_wasm_bg.js',
+    'chia_wallet_sdk_wasm.js',
+  ];
+  for (const wasmFile of wasmFiles) {
+    await Deno.copyFile(`./src/wasm/${wasmFile}`, `./dist/${wasmFile}`);
+  }
+  console.log('  ✓ Copied WASM files');
+} catch (error) {
+  console.warn('  ⚠ Failed to copy WASM files:', error);
+}
+
 console.log('✅ Build completed successfully!');
 console.log('📁 Output files in ./dist/');
-console.log('📦 Chia Wallet SDK WASM will be loaded from npm package at runtime');
 
 // Stop esbuild
 result.stop?.();
