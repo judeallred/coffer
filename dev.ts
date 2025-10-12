@@ -100,12 +100,21 @@ function transformImports(code: string): string {
   if (hasStyledImport) {
     const mockStyled = `
 // Mock styled-components replacement - returns regular HTML elements
+import { h } from "https://esm.sh/preact@10.19.2";
+
 function styled(tag) {
   return function(templateStrings, ...values) {
-    // Return a component that renders the base HTML tag
+    // Return a component that renders the base HTML tag using Preact's h function
     return function(props) {
       const { children, className = '', ...otherProps } = props || {};
-      return { type: tag, props: { ...otherProps, className, children } };
+      // Remove $ prefixed props (transient props) used by styled-components
+      const cleanProps = {};
+      for (const key in otherProps) {
+        if (!key.startsWith('$')) {
+          cleanProps[key] = otherProps[key];
+        }
+      }
+      return h(tag, { ...cleanProps, className }, children);
     };
   };
 }
@@ -149,6 +158,15 @@ styled.img = styled('img');
     (_match, cssPath) => {
       // Convert to a comment so we can see what was imported
       return `// CSS import removed: ${cssPath}\n`;
+    },
+  );
+
+  // Handle image imports (PNG, JPG, SVG, etc.)
+  // Transform: import image from './path.png' -> const image = './path.png';
+  transformedCode = transformedCode.replace(
+    /import\s+(\w+)\s+from\s+["']([^"']*\.(png|jpg|jpeg|gif|svg|webp|ico))["'];?\s*\n?/gi,
+    (_match, varName, imagePath) => {
+      return `const ${varName} = "${imagePath}";\n`;
     },
   );
 

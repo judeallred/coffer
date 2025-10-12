@@ -35,7 +35,7 @@ export function About(): JSX.Element {
           </p>
           <div className='qr-code-container'>
             <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${tipAddress}`}
+              src='./tip-qr-code.png'
               alt='Tip address QR code'
               className='qr-code'
             />
@@ -45,4 +45,3 @@ export function About(): JSX.Element {
     </section>
   );
 }
-

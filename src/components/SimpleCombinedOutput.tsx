@@ -12,6 +12,8 @@ export function SimpleCombinedOutput({
 }: SimpleCombinedOutputProps): JSX.Element {
   const [combinedOffer, setCombinedOffer] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [buttonAnimation, setButtonAnimation] = useState<'success' | 'error' | ''>('');
+  const [buttonEmoji, setButtonEmoji] = useState<string>('📋');
 
   const validOffers = offers.filter((offer) => offer.isValid && offer.content.trim());
 
@@ -54,14 +56,23 @@ export function SimpleCombinedOutput({
       await navigator.clipboard.writeText(combinedOffer);
       onLogError('Combined offer copied to clipboard', 'info');
 
-      // Show toast notification
-      const { showToast } = await import('./ToastContainer.tsx');
-      showToast('Combined offer copied!', 'success');
+      // Trigger success animation - fade to checkmark
+      setButtonAnimation('success');
+      setTimeout(() => setButtonEmoji('✓'), 300); // Change emoji at halfway point
+      setTimeout(() => {
+        setButtonEmoji('📋');
+        setButtonAnimation('');
+      }, 600);
     } catch (error) {
       onLogError(`Failed to copy to clipboard: ${error}`, 'error');
 
-      const { showToast } = await import('./ToastContainer.tsx');
-      showToast('Copy failed - select text manually', 'error');
+      // Trigger error animation - fade to frown
+      setButtonAnimation('error');
+      setTimeout(() => setButtonEmoji('☹'), 300); // Change emoji at halfway point
+      setTimeout(() => {
+        setButtonEmoji('📋');
+        setButtonAnimation('');
+      }, 600);
     }
   };
 
@@ -91,11 +102,11 @@ export function SimpleCombinedOutput({
           {combinedOffer && (
             <button
               type='button'
-              className='copy-button'
+              className={`copy-button ${buttonAnimation}`}
               onClick={handleCopyToClipboard}
               title='Copy to clipboard'
             >
-              📋
+              {buttonEmoji}
             </button>
           )}
         </div>

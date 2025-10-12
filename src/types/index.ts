@@ -13,10 +13,3 @@ export interface LogEntry {
   timestamp: Date;
   type: 'error' | 'warning' | 'info';
 }
-
-export interface ToastData {
-  id: string;
-  message: string;
-  type: 'success' | 'error' | 'info' | 'warning';
-  duration?: number;
-}

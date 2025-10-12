@@ -16,7 +16,8 @@
     "preact/": "https://esm.sh/preact@10.19.2/",
     "styled-components": "https://esm.sh/styled-components@6.1.1",
     "@std/assert": "jsr:@std/assert@^0.218.2",
-    "chia-wallet-sdk-wasm": "npm:chia-wallet-sdk-wasm@^0.29.0"
+    "chia-wallet-sdk-wasm": "npm:chia-wallet-sdk-wasm@^0.29.0",
+    "puppeteer": "npm:puppeteer@21.11.0"
   },
   "tasks": {
     "dev": "deno run --allow-net --allow-read --allow-write --allow-env --allow-run --watch dev.ts",

@@ -3,7 +3,6 @@ import { Header } from './Header.tsx';
 import { SimpleOfferInputs } from './SimpleOfferInputs.tsx';
 import { SimpleCombinedOutput } from './SimpleCombinedOutput.tsx';
 import { ErrorLog } from './ErrorLog.tsx';
-import { showToast, ToastContainer } from './ToastContainer.tsx';
 import { About } from './About.tsx';
 import type { LogEntry, Offer } from '../types/index.ts';
 
@@ -67,6 +66,24 @@ async function fetchOfferFromId(offerId: string): Promise<string | null> {
 export function App(): JSX.Element {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [errorLogs, setErrorLogs] = useState<LogEntry[]>([]);
+  const [isDebugMode, setIsDebugMode] = useState<boolean>(false);
+
+  // Expose debug mode toggle to window for console access
+  useEffect(() => {
+    (window as typeof window & { toggleDebug?: () => void }).toggleDebug = () => {
+      setIsDebugMode((prev) => {
+        const newValue = !prev;
+        console.log(`Debug mode ${newValue ? 'enabled' : 'disabled'}`);
+        return newValue;
+      });
+    };
+
+    console.log('💡 Tip: Run toggleDebug() in the console to show/hide the application log');
+
+    return () => {
+      delete (window as typeof window & { toggleDebug?: () => void }).toggleDebug;
+    };
+  }, []);
 
   const validateOffer = async (content: string): Promise<{ isValid: boolean; error?: string }> => {
     try {
@@ -281,15 +298,13 @@ export function App(): JSX.Element {
           // If it's an offer ID or URL, try to fetch the full offer string
           if (isPotentialOfferId) {
             const offerIdToFetch = offerIdFromUrl || content;
-            showToast('🔍 Fetching offer from ID...', 'info');
             logError(`Fetching offer from ${offerIdFromUrl ? 'URL' : 'ID'}...`, 'info');
 
             const fetchedOffer = await fetchOfferFromId(offerIdToFetch);
             if (fetchedOffer) {
               content = fetchedOffer;
-              showToast('✅ Offer fetched successfully!', 'success');
+              logError('Offer fetched successfully!', 'info');
             } else {
-              showToast('❌ Failed to fetch offer from ID', 'error');
               logError('Failed to fetch offer from ID', 'error');
               return;
             }
@@ -299,20 +314,18 @@ export function App(): JSX.Element {
           const isDuplicate = offers.some((offer) => offer.content === content);
 
           if (!isPotentialOfferId) {
-            showToast('📋 Offer detected from paste - adding...', 'info');
             logError('Offer detected from paste - adding...', 'info');
           }
 
           await addOffer(content);
 
           if (isDuplicate) {
-            showToast('⚠️ Duplicate offer (error shown in field)', 'warning');
+            logError('Duplicate offer (error shown in field)', 'warning');
           } else {
-            showToast('✅ Offer added successfully!', 'success');
+            logError('Offer added successfully!', 'info');
           }
         }
       } catch (error) {
-        showToast(`Failed to process pasted content: ${error}`, 'error');
         logError(`Failed to process pasted content: ${error}`, 'error');
       }
     };
@@ -352,17 +365,16 @@ export function App(): JSX.Element {
 
             if (result.success && result.combinedOffer) {
               await navigator.clipboard.writeText(result.combinedOffer);
-              showToast('📋 Combined offer copied to clipboard!', 'success', 3000);
+              logError('Combined offer copied to clipboard!', 'info');
               e.preventDefault(); // Prevent default copy behavior
             } else {
-              showToast('Failed to generate combined offer', 'error');
+              logError('Failed to generate combined offer', 'error');
             }
           } catch (error) {
-            showToast('Failed to copy combined offer to clipboard', 'error');
             logError(`Failed to copy to clipboard: ${error}`, 'error');
           }
         } else {
-          showToast('No valid offers available to copy', 'warning');
+          logError('No valid offers available to copy', 'warning');
         }
       }
     };
@@ -391,9 +403,8 @@ export function App(): JSX.Element {
           />
         </div>
       </main>
-      <ErrorLog logs={errorLogs} />
+      <ErrorLog logs={errorLogs} isDebugMode={isDebugMode} />
       <About />
-      <ToastContainer />
     </div>
   );
 }

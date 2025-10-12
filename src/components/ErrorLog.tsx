@@ -192,6 +192,7 @@ const ClearButton = styled.button`
 
 interface ErrorLogProps {
   logs: LogEntry[];
+  isDebugMode?: boolean;
 }
 
 const getLogIcon = (type: 'error' | 'warning' | 'info'): string => {
@@ -213,15 +214,15 @@ const getMostSevereType = (logs: LogEntry[]): 'error' | 'warning' | 'info' => {
   return 'info';
 };
 
-export function ErrorLog({ logs }: ErrorLogProps): JSX.Element {
+export function ErrorLog({ logs, isDebugMode = false }: ErrorLogProps): JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const hasLogs = logs.length > 0;
   const recentLogs = logs.slice(-10).reverse(); // Show last 10 logs, most recent first
   const mostSevereType = getMostSevereType(logs);
 
-  // Auto-expand when there are errors
-  const shouldShow = hasLogs || isExpanded;
+  // Only show if debug mode is enabled and there are logs
+  const shouldShow = isDebugMode && (hasLogs || isExpanded);
 
   if (!shouldShow) {
     return null;

@@ -30,6 +30,12 @@ const externalImportPlugin: esbuild.Plugin = {
     build.onResolve({ filter: /\.wasm$/ }, (args) => {
       return { path: args.path, external: true };
     });
+    // Handle image imports - transform to file paths
+    build.onResolve({ filter: /\.(png|jpg|jpeg|gif|svg|webp|ico)$/ }, (args) => {
+      // Convert relative import path to just the filename
+      const filename = args.path.split('/').pop() || args.path;
+      return { path: `./${filename}`, external: true };
+    });
   },
 };
 
@@ -76,16 +82,16 @@ try {
   console.warn('  ⚠ Failed to copy CSS:', error);
 }
 
-// Copy favicons
-const favicons = ['favicon.ico', 'favicon.svg', 'favicon-32x32.png'];
-for (const favicon of favicons) {
+// Copy favicons and images
+const imageFiles = ['favicon.ico', 'favicon.svg', 'favicon-32x32.png', 'tip-qr-code.png'];
+for (const imageFile of imageFiles) {
   try {
-    await Deno.copyFile(`./src/${favicon}`, `./dist/${favicon}`);
+    await Deno.copyFile(`./src/${imageFile}`, `./dist/${imageFile}`);
   } catch {
-    console.warn(`  ⚠ Failed to copy ${favicon}`);
+    console.warn(`  ⚠ Failed to copy ${imageFile}`);
   }
 }
-console.log('  ✓ Copied favicons');
+console.log('  ✓ Copied favicons and images');
 
 // Copy PWA files
 try {

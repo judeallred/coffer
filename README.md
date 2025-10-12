@@ -18,7 +18,7 @@ Coffer is a modern single-page web application that leverages the Chia Wallet SD
 - **Global Clipboard Integration**: Paste offers anywhere on the page, copy combined offers with Ctrl+C
 - **Real-time Validation**: Instant feedback with validation status indicators (✅/❌)
 - **Duplicate Detection**: Automatically prevents adding the same offer multiple times
-- **Toast Notifications**: Clear visual feedback for all operations
+- **Visual Feedback**: Button animations show success/error states for clipboard operations
 - **Clean, Minimal UI**: Simple input fields with clear validation states
 
 The application uses the `chia-wallet-sdk-wasm` package for offer validation and combination.
@@ -70,7 +70,7 @@ This project is implemented as a single-page static client side website. It uses
 
 - **Universal Copy**: Press Ctrl+C (or Cmd+C on Mac) anywhere on the page to copy the combined offer
 - **Smart Context Detection**: Respects normal copy behavior in input fields and text selections
-- **Instant Feedback**: Toast notifications confirm successful clipboard operations
+- **Instant Feedback**: Button animations confirm successful clipboard operations
 - **Paste Anywhere**: Paste valid offer strings, offer IDs, or URLs anywhere on the page for instant detection
 - **Duplicate Prevention**: Automatically prevents adding the same offer twice with clear error messages
 
@@ -79,6 +79,19 @@ This project is implemented as a single-page static client side website. It uses
 - Builds to static files for flexible deployment options
 - Support for GitHub Pages deployment
 - Support for custom domain deployment
+
+## Debug Mode
+
+For development and troubleshooting, Coffer includes a hidden application log that can be enabled via the browser console:
+
+```javascript
+toggleDebug(); // Enable/disable the application log
+```
+
+- The application log is **hidden by default** for normal users
+- When enabled, it displays errors, warnings, and info messages at the bottom of the page
+- Toggle it on/off as needed during development or troubleshooting
+- The console will show a tip message on page load about this feature
 
 # Implementation Status
 
@@ -96,7 +109,7 @@ This project is implemented as a single-page static client side website. It uses
 ### User Interface
 
 - [x] **Clean Input Fields**: Simple, minimal interface with validation states
-- [x] **Toast Notifications**: Real-time feedback for all operations
+- [x] **Button Animations**: Happy/sad animations for clipboard operations
 - [x] **Error Messages**: Clear error display for invalid or duplicate offers
 - [x] **Responsive Design**: Optimized for desktop and mobile devices
 - [x] **Copy to Clipboard**: One-click copying of combined offers
@@ -108,7 +121,7 @@ This project is implemented as a single-page static client side website. It uses
 - **WASM Offer Validation**: Proper offer validation and combining using Chia SDK
 - **API Integration**: Fetching offers from Dexie and MintGarden APIs
 - **Duplicate Detection**: Validation prevents duplicate offers from being added
-- **User Interface**: Toast notifications, clipboard operations, input validation
+- **User Interface**: Button animations, clipboard operations, input validation
 - **Network Resilience**: API failure handling with graceful fallbacks
 
 **Test Results:**
@@ -139,7 +152,7 @@ This project is implemented as a single-page static client side website. It uses
 
 - **Zero-Click Interface**: No buttons needed - paste anywhere, copy with Ctrl+C
 - **Flexible Inputs**: Accept offer strings, IDs, or URLs
-- **Visual Feedback**: Toast notifications and validation indicators
+- **Visual Feedback**: Button animations and validation indicators
 - **Mobile Optimized**: Touch-friendly responsive design
 
 # Getting Started
@@ -202,7 +215,7 @@ You can paste offers in three ways:
 
 - **Quick Copy**: Press Ctrl+C (or Cmd+C) anywhere on the page
 - **Manual Copy**: Click the 📋 button next to the combined offer
-- **Toast Feedback**: Visual confirmation for all clipboard operations
+- **Visual Feedback**: Button animations confirm success/error for clipboard operations
 
 ## Testing
 
