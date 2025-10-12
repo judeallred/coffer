@@ -30,7 +30,7 @@ Deno.test({
     // Start the dev server if not already running
     const serverProcess = new Deno.Command('deno', {
       args: ['run', '--allow-all', 'dev.ts'],
-      cwd: '/Users/judeallred/code/coffer',
+      cwd: Deno.cwd(),
       stdout: 'piped',
       stderr: 'piped',
     });
@@ -38,14 +38,22 @@ Deno.test({
     const server = serverProcess.spawn();
 
     // Wait for server to start
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
     try {
       // Launch Puppeteer browser
       console.log('🚀 Launching Puppeteer browser...');
+      const isCI = Deno.env.get('CI') === 'true';
       browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        headless: 'new',
+        executablePath: isCI ? '/usr/bin/chromium-browser' : undefined,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+        ],
+        protocolTimeout: 60000,
       });
 
       page = await browser.newPage();
