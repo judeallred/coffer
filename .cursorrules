@@ -1,0 +1,93 @@
+# Coffer Project - Cursor Rules
+
+## Project Overview
+This is a Deno-based web application for combining Chia blockchain offers. It uses:
+- **Runtime**: Deno
+- **Frontend**: Preact with TypeScript
+- **Blockchain**: Chia Wallet SDK (WASM)
+- **Styling**: styled-components
+- **Testing**: Deno test with Puppeteer for e2e tests
+
+## Critical Requirements
+
+### After Every Code Change
+You MUST ensure the following commands pass successfully before considering any task complete:
+
+1. **Formatting Check**
+   ```bash
+   deno task format
+   ```
+   - Ensures code follows the project's formatting standards
+   - Fix with: `deno fmt --ignore=src/wasm,node_modules,dist`
+
+2. **Linting**
+   ```bash
+   deno task lint
+   ```
+   - Checks for code quality issues and potential bugs
+   - Must pass with zero errors
+   - Note: Use `globalThis` instead of `window` in Deno code
+
+3. **Tests**
+   ```bash
+   deno task test
+   ```
+   - Run all tests (unit, integration, and e2e)
+   - All tests must pass before changes are considered complete
+
+### Verification Workflow
+After making any code changes:
+1. Run `deno task format` - fix any formatting issues
+2. Run `deno task lint` - fix any linting errors
+3. Run `deno task test` - ensure all tests pass
+4. Only then is the task complete
+
+## Code Style Guidelines
+
+### TypeScript/Deno Specific
+- Use strict TypeScript types (project has strict mode enabled)
+- Prefer `const` over `let` when possible
+- Use explicit function return types
+- Use `globalThis` instead of `window` for browser APIs in Deno
+- Avoid `any` type unless absolutely necessary
+
+### React/Preact
+- Use functional components with hooks
+- Use styled-components for styling
+- Follow existing component patterns in `src/components/`
+
+### File Organization
+- Components: `src/components/`
+- Services: `src/services/`
+- Types: `src/types/`
+- WASM files: `src/wasm/` (do not modify)
+- Tests: `tests/` (e2e and integration)
+
+### Imports
+- Use import maps defined in `deno.json`
+- Don't modify WASM-related imports or files
+
+## Testing
+- Write tests for new functionality
+- Ensure e2e tests pass (they use Puppeteer)
+- Integration tests should cover the wallet SDK integration
+- Run specific test suites with:
+  - `deno task test:integration`
+  - `deno task test:browser`
+
+## Build & Development
+- Development server: `deno task dev`
+- Build for production: `deno task build`
+- Built files go to `dist/` directory
+
+## Git Workflow
+- The project has pre-commit hooks that run format, lint, and build
+- Do not skip hooks or use `--no-verify`
+- Changes should be committed only after all checks pass
+
+## Important Notes
+- Never modify files in `src/wasm/` directory
+- Never modify `node_modules/` or `dist/` directories
+- Respect the ignore patterns in deno.json tasks
+- The project uses Chia blockchain specific WASM modules that must not be altered
+
