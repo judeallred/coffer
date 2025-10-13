@@ -91,6 +91,16 @@ body {
   gap: var(--spacing-md);
 }
 
+.logo-image-container {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.logo-image-container.clickable {
+  cursor: pointer;
+}
+
 .logo-image {
   width: 64px;
   height: 64px;
@@ -99,9 +109,50 @@ body {
   transition: all 0.3s ease;
 }
 
-.logo-image:hover {
+.logo-image-container:hover .logo-image,
+.logo-image-container:focus .logo-image {
   box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
   transform: scale(1.05);
+}
+
+.logo-image-container:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+.download-icon-overlay {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 28px;
+  height: 28px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 12px rgba(0, 255, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.5);
+  animation: pulseGlow 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.download-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--color-background);
+  stroke-width: 2.5;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(0, 255, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.8), 0 2px 12px rgba(0, 0, 0, 0.6);
+    transform: scale(1.05);
+  }
 }
 
 .logo-text {
@@ -673,9 +724,26 @@ body {
     padding-left: var(--spacing-md);
   }
 
+  .logo-image-container {
+    width: 48px;
+    height: 48px;
+  }
+
   .logo-image {
     width: 48px;
     height: 48px;
+  }
+
+  .download-icon-overlay {
+    width: 24px;
+    height: 24px;
+    bottom: -3px;
+    right: -3px;
+  }
+
+  .download-icon {
+    width: 15px;
+    height: 15px;
   }
 
   .title {
