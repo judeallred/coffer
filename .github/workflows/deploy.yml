@@ -47,6 +47,8 @@ jobs:
 
       - name: Build project
         run: deno task build
+        env:
+          BASE_PATH: /coffer
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

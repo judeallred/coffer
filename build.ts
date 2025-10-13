@@ -71,6 +71,20 @@ if (result.errors.length > 0) {
 // Copy and modify HTML file to use built JS instead of source TS
 console.log('📋 Copying and modifying HTML...');
 let html = await Deno.readTextFile('./src/index.html');
+
+// Get BASE_PATH from environment variable, default to '/' for local development
+const basePath = Deno.env.get('BASE_PATH') || '/';
+const normalizedBasePath = basePath.endsWith('/') ? basePath : `${basePath}/`;
+
+console.log(`  ℹ️ Using BASE_PATH: ${normalizedBasePath}`);
+
+// Replace the BASE_PATH_PLACEHOLDER with actual base tag if not root
+let baseTag = '';
+if (normalizedBasePath !== '/') {
+  baseTag = `<base href="${normalizedBasePath}">`;
+}
+html = html.replace('<!-- BASE_PATH_PLACEHOLDER -->', baseTag);
+
 // Replace the source script reference with the built file
 html = html.replace('./main.tsx', './main.js');
 await Deno.writeTextFile('./dist/index.html', html);
