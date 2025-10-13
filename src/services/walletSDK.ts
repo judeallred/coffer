@@ -3,20 +3,23 @@ import type { ChiaWalletSDK } from '../types/wasm.ts';
 
 let wasmModule: ChiaWalletSDK | null = null;
 
-// Initialize the WASM module from local files
+// Initialize the WASM module from local files using ArrayBuffer method
 export async function initWalletSDK(): Promise<void> {
   try {
-    // Import the local WASM module
+    // Import our custom WASM loader that uses fetch() + ArrayBuffer
+    // This bypasses MIME type issues by not importing .wasm as an ES module
     const chiaSDK = await import('chia-wallet-sdk-wasm') as unknown as ChiaWalletSDK;
 
-    // Initialize WASM if needed
+    // Our custom loader exports a default init function
+    // This uses WebAssembly.instantiate() with ArrayBuffer instead of ES module import
     if (chiaSDK.default && typeof chiaSDK.default === 'function') {
       await chiaSDK.default();
-    } else if (chiaSDK.init && typeof chiaSDK.init === 'function') {
-      await chiaSDK.init();
+      console.log('✅ WASM initialized via default init (ArrayBuffer method)');
+    } else if (chiaSDK.initWasm && typeof chiaSDK.initWasm === 'function') {
+      await chiaSDK.initWasm();
+      console.log('✅ WASM initialized via initWasm (ArrayBuffer method)');
     } else {
-      // WASM module might already be initialized, just log warning
-      console.warn('⚠️ No init function found, assuming WASM is already initialized');
+      console.warn('⚠️ No init function found, WASM may already be initialized');
     }
 
     // Set up error handling if available

@@ -39,7 +39,7 @@ function getMimeType(pathname: string): string {
 const IMPORT_MAP: Record<string, string> = {
   'preact': 'https://esm.sh/preact@10.19.2',
   'preact/': 'https://esm.sh/preact@10.19.2/',
-  'chia-wallet-sdk-wasm': '/wasm/chia_wallet_sdk_wasm.js', // Use local WASM files
+  'chia-wallet-sdk-wasm': './chia_wallet_sdk_wasm.js', // Use local WASM files
 };
 
 // Transform bare imports to browser-compatible URLs
@@ -178,12 +178,15 @@ await serve(
     }
 
     // Handle WASM files specifically - serve from wasm directory
-    if (url.pathname.endsWith('.wasm') || url.pathname.includes('chia_wallet_sdk_wasm')) {
+    // This handles both .wasm files and the chia_wallet_sdk_wasm*.js wrapper files
+    if (
+      url.pathname.endsWith('.wasm') ||
+      url.pathname.includes('chia_wallet_sdk_wasm')
+    ) {
       try {
-        // Try to serve from src/wasm/ directory
-        const wasmPath = url.pathname.startsWith('/wasm/')
-          ? `./src${url.pathname}`
-          : `./src/wasm${url.pathname}`;
+        // Always serve from src/wasm/ directory
+        const filename = url.pathname.split('/').pop() || url.pathname;
+        const wasmPath = `./src/wasm/${filename}`;
         const file = await Deno.readFile(wasmPath);
         const mimeType = getMimeType(url.pathname);
 

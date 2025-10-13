@@ -24,6 +24,7 @@
     "fmt": "deno task format",
     "dev": "deno run --allow-net --allow-read --allow-write --allow-env --allow-run --watch dev.ts",
     "build": "deno run --allow-all build.ts",
+    "serve:dist": "deno run --allow-net --allow-read https://deno.land/std@0.208.0/http/file_server.ts --port 8001 dist",
     "test": "deno test --allow-all",
     "test:browser": "deno test --allow-all tests/browser/",
     "test:integration": "deno test --allow-all tests/integration/"

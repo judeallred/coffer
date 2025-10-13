@@ -63,6 +63,7 @@ export interface SpendBundleConstructor {
 export interface ChiaWalletSDK {
   /**
    * Initializes the WASM module (if available as default export)
+   * Uses fetch() + ArrayBuffer to avoid MIME type issues
    */
   default?: () => Promise<void>;
 
@@ -70,6 +71,11 @@ export interface ChiaWalletSDK {
    * Alternative initialization method
    */
   init?: () => Promise<void>;
+
+  /**
+   * Custom initialization method using ArrayBuffer
+   */
+  initWasm?: () => Promise<void>;
 
   /**
    * Sets up panic hook for better error messages

@@ -19,12 +19,20 @@ const externalImportPlugin: esbuild.Plugin = {
     build.onResolve({ filter: /^preact/ }, (args) => {
       return { path: args.path, external: true };
     });
+    // Mark chia-wallet-sdk-wasm as external (will be resolved by import map)
+    build.onResolve({ filter: /^chia-wallet-sdk-wasm$/ }, (args) => {
+      return { path: args.path, external: true };
+    });
     // Handle CSS imports - just skip them
     build.onResolve({ filter: /\.css$/ }, (args) => {
       return { path: args.path, external: true };
     });
     // Handle WASM files - mark as external
     build.onResolve({ filter: /\.wasm$/ }, (args) => {
+      return { path: args.path, external: true };
+    });
+    // Handle WASM JS files - mark as external to prevent bundling
+    build.onResolve({ filter: /chia_wallet_sdk_wasm.*\.js$/ }, (args) => {
       return { path: args.path, external: true };
     });
     // Handle image imports - transform to file paths
