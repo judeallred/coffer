@@ -6,6 +6,19 @@
     <title>Coffer - Combine Offers on the Chia Blockchain</title>
     <meta name="description" content="A simple utility website for combining Chia offers">
 
+    <!-- Base URL for GitHub Pages deployment -->
+    <script>
+      // Set base href for GitHub Pages deployment
+      // This ensures all relative paths work correctly when deployed to /coffer/
+      const isGitHubPages = window.location.hostname.includes('github.io');
+      const repoName = 'coffer';
+      if (isGitHubPages && window.location.pathname.includes(repoName)) {
+        const base = document.createElement('base');
+        base.href = `/${repoName}/`;
+        document.head.appendChild(base);
+      }
+    </script>
+
     <!-- PWA Configuration -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#6b46c1">
