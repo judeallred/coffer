@@ -37,32 +37,37 @@ export function DexieOfferInfo({ dexieData, loading }: DexieOfferInfoProps): JSX
 
   // Success - display summary
   const { summary } = dexieData;
-  const offeredText = summary?.offered
-    .map((item) => {
-      if (item.type === 'nft') {
-        return `${item.name}`;
-      }
-      return `${item.amount} ${item.code}`;
-    })
-    .join(', ');
 
-  const requestedText = summary?.requested
-    .map((item) => {
-      if (item.type === 'nft') {
-        return `${item.name}`;
-      }
-      return `${item.amount} ${item.code}`;
-    })
-    .join(', ');
+  const formatItem = (item: typeof summary.offered[0]): string => {
+    if (item.type === 'nft') {
+      return item.name;
+    }
+    return `${item.amount} ${item.code}`;
+  };
 
   return (
     <div className='dexie-offer-info success'>
       <div className='dexie-info-header' onClick={() => setIsExpanded(!isExpanded)}>
         <div className='dexie-info-left'>
           <img src={dexieDuckLogo} alt='dexie' className='dexie-logo' />
-          <span className='dexie-info-text'>
-            {offeredText} ↔ {requestedText}
-          </span>
+          <div className='dexie-info-details'>
+            {summary && summary.offered.length > 0 && (
+              <div className='dexie-items-section'>
+                <span className='dexie-section-label'>Offered:</span>
+                {summary.offered.map((item, idx) => (
+                  <div key={idx} className='dexie-item'>• {formatItem(item)}</div>
+                ))}
+              </div>
+            )}
+            {summary && summary.requested.length > 0 && (
+              <div className='dexie-items-section'>
+                <span className='dexie-section-label'>Requested:</span>
+                {summary.requested.map((item, idx) => (
+                  <div key={idx} className='dexie-item'>• {formatItem(item)}</div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <span className={`dexie-expand-icon ${isExpanded ? 'expanded' : ''}`}>▼</span>
       </div>
