@@ -1,4 +1,4 @@
-# GitHub Pages 404 Fix - .nojekyll File
+# GitHub Pages 404 Fix - Complete Solution
 
 ## Problem
 
@@ -9,21 +9,22 @@ GET https://judeallred.github.io/coffer/chia_wallet_sdk_wasm.js
 net::ERR_ABORTED 404 (Not Found)
 ```
 
-All WASM files were built correctly and present in the `dist/` directory, but GitHub
-Pages wasn't serving them.
+## Root Causes (Two Issues)
 
-## Root Cause
+### Issue 1: Missing .nojekyll File
 
 GitHub Pages uses **Jekyll** by default to process static sites. Jekyll has specific
-file filtering rules that can cause it to ignore or skip certain files, leading to 404
-errors even though the files exist in the repository.
+file filtering rules that can cause it to ignore or skip certain files.
+
+### Issue 2: WASM Binary Not Committed to Git
+
+The `.gitignore` file had `*.wasm` which prevented the 4.7MB WASM binary file
+(`chia_wallet_sdk_wasm_bg.wasm`) from being committed to the repository. This meant
+the file didn't exist in CI/CD and couldn't be deployed.
 
 ## Solution
 
-Add a `.nojekyll` file to the `dist/` directory. This file (which can be empty) tells
-GitHub Pages to **skip Jekyll processing** and serve all files as-is.
-
-### Implementation
+### Part 1: Add .nojekyll File
 
 Updated `build.ts` to automatically create `.nojekyll` during every build:
 
@@ -38,40 +39,93 @@ try {
 }
 ```
 
+### Part 2: Commit WASM Binary to Repository
+
+Updated `.gitignore` to stop excluding `.wasm` files:
+
+```diff
+# WASM build artifacts (from source builds - we keep pre-built WASM files)
+chia-wallet-sdk/target/
+-*.wasm
+-*.wasm.d.ts
+-*_bg.wasm.d.ts
++# Note: *.wasm is NOT excluded because we need to deploy pre-built WASM files
++# *.wasm
++# *.wasm.d.ts
++# *_bg.wasm.d.ts
+```
+
+Then committed the WASM binary:
+
+```bash
+git add src/wasm/chia_wallet_sdk_wasm_bg.wasm
+git commit -m "Add WASM binary file to repository"
+```
+
 ## Files Changed
 
 1. **`build.ts`** - Added `.nojekyll` file creation
-2. **`.cursor/rules/wasm-loading.mdc`** - Documented the GitHub Pages requirement
-3. **`BASE_PATH_CONFIGURATION.md`** - Added note about `.nojekyll`
+2. **`.gitignore`** - Removed `*.wasm` exclusion
+3. **`src/wasm/chia_wallet_sdk_wasm_bg.wasm`** - Added 4.7MB binary file
+4. **`.cursor/rules/wasm-loading.mdc`** - Documented the GitHub Pages requirement
+5. **`BASE_PATH_CONFIGURATION.md`** - Added note about `.nojekyll`
+6. **`.github/workflows/deploy.yml`** - Added debug logging
 
 ## Verification
 
-After building, verify the file exists:
+### Local Verification
 
 ```bash
+# Check .nojekyll exists
 ls -la dist/.nojekyll
-# -rw-r--r--  1 user  staff  0 Oct 12 22:48 dist/.nojekyll
+# -rw-r--r--  1 user  staff  0 Oct 13 03:02 dist/.nojekyll
+
+# Check WASM files exist in source
+ls -lh src/wasm/*.wasm
+# -rw-r--r--  1 user  staff  4.7M Sep 24 23:55 src/wasm/chia_wallet_sdk_wasm_bg.wasm
+
+# Check WASM files are committed
+git ls-files src/wasm/
+# Should include: chia_wallet_sdk_wasm_bg.wasm
+```
+
+### GitHub Pages Verification
+
+```bash
+# All resources should return HTTP 200
+curl -I https://judeallred.github.io/coffer/chia_wallet_sdk_wasm_bg.wasm
+# HTTP/2 200
+# content-type: application/wasm
+# content-length: 4897125
+
+curl -I https://judeallred.github.io/coffer/chia_wallet_sdk_wasm.js
+# HTTP/2 200
+
+curl -I https://judeallred.github.io/coffer/.nojekyll
+# HTTP/2 200
 ```
 
 ## Testing
 
-All tests pass with the fix:
+All tests pass:
 
 ```bash
-deno task format         # ✅ Passed
-deno task lint           # ✅ Passed
-deno task test:integration   # ✅ Passed (3 tests, 7 steps)
+deno task format                  # ✅ Passed
+deno task lint                    # ✅ Passed
+deno task test:integration        # ✅ Passed (3 tests, 7 steps)
 deno test --allow-all tests/e2e/base_path_build_test.ts  # ✅ Passed (4 tests)
 ```
 
-## Deployment
+## Final Status
 
-Once committed and pushed, GitHub Actions will:
+✅ **RESOLVED** - GitHub Pages deployment is fully working!
 
-1. Build with `BASE_PATH=/coffer`
-2. Create `.nojekyll` file in `dist/`
-3. Upload `dist/` directory to GitHub Pages
-4. GitHub Pages will serve all files correctly (no Jekyll processing)
+- ✅ All WASM files return HTTP 200
+- ✅ Main page loads correctly
+- ✅ Application initializes WASM successfully
+- ✅ No 404 errors in browser console
+
+**Live Site**: https://judeallred.github.io/coffer/
 
 ## Related Documentation
 
