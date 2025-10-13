@@ -1,4 +1,3 @@
-import { useState } from 'preact/hooks';
 import type { DexieOfferResponse } from '../types/index.ts';
 import dexieDuckLogo from '../assets/dexie-duck.svg';
 
@@ -8,8 +7,6 @@ interface DexieOfferInfoProps {
 }
 
 export function DexieOfferInfo({ dexieData, loading }: DexieOfferInfoProps): JSX.Element | null {
-  const [isExpanded, setIsExpanded] = useState(false);
-
   // Don't render if no data and not loading
   if (!dexieData && !loading) {
     return null;
@@ -46,9 +43,35 @@ export function DexieOfferInfo({ dexieData, loading }: DexieOfferInfoProps): JSX
             <img src={item.thumbnail} alt={item.name} className='dexie-nft-thumbnail' />
           )}
           <div className='dexie-nft-details'>
-            <div className='dexie-nft-name'>{item.name}</div>
+            <div className='dexie-nft-name'>
+              {item.nftId
+                ? (
+                  <a
+                    href={`https://mintgarden.io/nfts/${item.nftId}`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='dexie-link'
+                  >
+                    {item.name}
+                  </a>
+                )
+                : (
+                  item.name
+                )}
+            </div>
             <div className='dexie-nft-meta'>
-              <span className='dexie-nft-collection'>{item.collectionName}</span>
+              {item.collectionId
+                ? (
+                  <a
+                    href={`https://mintgarden.io/collections/${item.collectionId}`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='dexie-link dexie-nft-collection'
+                  >
+                    {item.collectionName}
+                  </a>
+                )
+                : <span className='dexie-nft-collection'>{item.collectionName}</span>}
               {item.royaltyPercent > 0 && (
                 <span className='dexie-nft-royalty'>• {item.royaltyPercent}% fee</span>
               )}
@@ -67,13 +90,19 @@ export function DexieOfferInfo({ dexieData, loading }: DexieOfferInfoProps): JSX
   return (
     <div className='dexie-offer-info success'>
       <div className='dexie-info-header'>
-        <img
-          src={dexieDuckLogo}
-          alt='dexie'
-          className='dexie-logo clickable'
-          onClick={() => setIsExpanded(!isExpanded)}
-          title='Click to view raw JSON'
-        />
+        {dexieData.offerId
+          ? (
+            <a
+              href={`https://dexie.space/offers/${dexieData.offerId}`}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='dexie-logo-link'
+              title='View on Dexie'
+            >
+              <img src={dexieDuckLogo} alt='dexie' className='dexie-logo' />
+            </a>
+          )
+          : <img src={dexieDuckLogo} alt='dexie' className='dexie-logo' />}
         <div className='dexie-info-boxes'>
           {summary && summary.requested.length > 0 && (
             <div className='dexie-info-box'>
@@ -89,12 +118,6 @@ export function DexieOfferInfo({ dexieData, loading }: DexieOfferInfoProps): JSX
           )}
         </div>
       </div>
-
-      {isExpanded && (
-        <div className='dexie-info-content'>
-          <pre className='dexie-json-display'>{JSON.stringify(dexieData.rawResponse, null, 2)}</pre>
-        </div>
-      )}
     </div>
   );
 }

@@ -229,7 +229,9 @@ function parseOfferItems(items: DexieOfferItem[]): Array<NFTItem | AssetItem> {
       return {
         type: 'nft' as const,
         name: item.name || 'Unknown NFT',
+        nftId: item.id || null,
         collectionName: item.collection?.name || 'Unknown Collection',
+        collectionId: item.collection?.id || null,
         thumbnail: item.preview?.medium || null,
         royaltyPercent: item.nft_data?.royalty ? item.nft_data.royalty / 100 : 0,
       };
@@ -356,7 +358,11 @@ export async function fetchDexieOfferDetails(
       success: true,
       summary,
       rawResponse: data,
+      offerId,
     };
+
+    // Log raw response to console for debugging
+    console.log(`Dexie offer data for ${offerId}:`, data);
 
     // Cache successful response
     dexieOfferCache.set(offerId, { data: successResponse, timestamp: Date.now() });

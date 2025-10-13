@@ -20,7 +20,9 @@ export interface LogEntry {
 export interface NFTItem {
   type: 'nft';
   name: string;
+  nftId: string | null;
   collectionName: string;
+  collectionId: string | null;
   thumbnail: string | null;
   royaltyPercent: number;
 }
@@ -43,6 +45,7 @@ export interface DexieOfferResponse {
   error?: string;
   summary?: DexieOfferSummary;
   rawResponse: unknown;
+  offerId?: string;
 }
 
 // Raw Dexie API response structure

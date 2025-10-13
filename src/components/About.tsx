@@ -33,7 +33,8 @@ export function About(): JSX.Element {
               <h4 className='use-case-title'>2. Batch Transaction Efficiency</h4>
               <p className='use-case-text'>
                 You want to accept 10 offers but complete them in a single transaction. Combining
-                saves on blockchain fees and simplifies execution.
+                allows you to sign a single transaction and complete all of the offers in a single
+                coin spend. fees and simplifies execution.
               </p>
             </div>
             <div className='use-case'>
