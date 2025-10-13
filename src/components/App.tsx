@@ -146,11 +146,43 @@ export function App(): JSX.Element {
           // Was duplicate, now not - re-validate
           logError('Re-validating offer after duplicate removal', 'info');
           const validation = await validateOffer(offer.content);
-          return {
+
+          // Create updated offer
+          const updatedOffer = {
             ...offer,
             isValid: validation.isValid,
             error: validation.error,
+            dexieLoading: validation.isValid, // Start loading if valid
           };
+
+          // Fetch Dexie data if offer is valid
+          if (validation.isValid) {
+            // Use setTimeout to fetch Dexie data after re-validation completes
+            setTimeout(async () => {
+              try {
+                const offerId = await offerStringToId(offer.content);
+                if (offerId) {
+                  const dexieData = await fetchDexieOfferDetails(offerId);
+                  setOffers((prev) =>
+                    prev.map((o) =>
+                      o.id === offer.id ? { ...o, dexieData, dexieLoading: false } : o
+                    )
+                  );
+                } else {
+                  setOffers((prev) =>
+                    prev.map((o) => o.id === offer.id ? { ...o, dexieLoading: false } : o)
+                  );
+                }
+              } catch (error) {
+                console.error('Failed to fetch Dexie data:', error);
+                setOffers((prev) =>
+                  prev.map((o) => o.id === offer.id ? { ...o, dexieLoading: false } : o)
+                );
+              }
+            }, 0);
+          }
+
+          return updatedOffer;
         }
 
         // No change needed

@@ -34,7 +34,7 @@ export function About(): JSX.Element {
               <p className='use-case-text'>
                 You want to accept 10 offers but complete them in a single transaction. Combining
                 allows you to sign a single transaction and complete all of the offers in a single
-                coin spend. fees and simplifies execution.
+                coin spend.
               </p>
             </div>
             <div className='use-case'>
@@ -49,14 +49,15 @@ export function About(): JSX.Element {
               </p>
             </div>
             <div className='use-case'>
-              <h4 className='use-case-title'>4. Arbitrage Opportunities</h4>
+              <h4 className='use-case-title'>4. Market Making and Arbitrage</h4>
               <p className='use-case-text'>
-                You can profit from price differences between markets! For example: you find offer A
-                (1000 SBX → 1200 DBX) and offer B (1000 DBX → 1200 SBX). By combining them, you
-                create an offer where the inputs are essentially nothing (though you may need at
-                least one SBX and DBX coin in your wallet) and the outputs are 200 DBX + 200 SBX -
-                pure profit! If you successfully arb with this tool, consider giving the tip jar
-                some love 💚
+                Combining offers enables market making and arbitrage operations as single
+                fill-or-kill transactions. This means the combined offer will either execute
+                completely or not at all - no partial fills. For example: if you find offer A (1000
+                SBX → 1200 DBX) and offer B (1000 DBX → 1200 SBX), combining them creates an offer
+                where the inputs are essentially nothing (though you may need at least one SBX and
+                DBX coin in your wallet) and the outputs are 200 DBX + 200 SBX. If you successfully
+                use this tool for market making or arbitrage, consider supporting the tip jar.
               </p>
             </div>
           </div>
@@ -115,23 +116,14 @@ export function About(): JSX.Element {
                   Open your Chia wallet and paste the combined offer to view and accept it.{' '}
                   <strong className='wallet-authority'>
                     The final state displayed in your wallet is the ultimate authority on what the
-                    offer will do - always review and trust what your wallet shows you.
+                    offer will do - always review your wallet's display of the combined offer before
+                    confirming.
                   </strong>{' '}
                   Your wallet will show you exactly what you'll send and receive before you confirm.
                 </p>
               </div>
             </div>
           </div>
-        </div>
-
-        <div className='about-info-section'>
-          <h2 className='about-heading'>Security Notice</h2>
-          <p className='about-text security-notice'>
-            ⚠️ Always verify the combined offer in your wallet before accepting. Your wallet is the
-            final authority on what will happen when you accept the offer. Check all amounts,
-            assets, and recipients carefully. Never accept an offer unless you fully understand and
-            agree with what your wallet displays.
-          </p>
         </div>
 
         <div className='about-divider'></div>

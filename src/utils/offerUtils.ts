@@ -12,6 +12,111 @@ import type {
 // Base58 encoding utilities
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
+// Bech32m encoding utilities
+const BECH32_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+const BECH32M_CONST = 0x2bc830a3;
+
+/**
+ * Bech32m polymod function for checksum calculation
+ */
+function bech32Polymod(values: number[]): number {
+  const GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+  let chk = 1;
+  for (const value of values) {
+    const top = chk >> 25;
+    chk = (chk & 0x1ffffff) << 5 ^ value;
+    for (let i = 0; i < 5; i++) {
+      if ((top >> i) & 1) {
+        chk ^= GEN[i];
+      }
+    }
+  }
+  return chk;
+}
+
+/**
+ * Create bech32m checksum
+ */
+function bech32CreateChecksum(prefix: string, data: number[]): number[] {
+  const values = [...prefix.split('').map((c) => c.charCodeAt(0) >> 5)]
+    .concat([0])
+    .concat(prefix.split('').map((c) => c.charCodeAt(0) & 31))
+    .concat(data)
+    .concat([0, 0, 0, 0, 0, 0]);
+  const polymod = bech32Polymod(values) ^ BECH32M_CONST;
+  const checksum: number[] = [];
+  for (let i = 0; i < 6; i++) {
+    checksum.push((polymod >> (5 * (5 - i))) & 31);
+  }
+  return checksum;
+}
+
+/**
+ * Convert 8-bit bytes to 5-bit values
+ */
+function convertBits(
+  data: Uint8Array,
+  fromBits: number,
+  toBits: number,
+  pad: boolean,
+): number[] | null {
+  let acc = 0;
+  let bits = 0;
+  const result: number[] = [];
+  const maxv = (1 << toBits) - 1;
+
+  for (const value of data) {
+    acc = (acc << fromBits) | value;
+    bits += fromBits;
+    while (bits >= toBits) {
+      bits -= toBits;
+      result.push((acc >> bits) & maxv);
+    }
+  }
+
+  if (pad) {
+    if (bits > 0) {
+      result.push((acc << (toBits - bits)) & maxv);
+    }
+  } else if (bits >= fromBits || ((acc << (toBits - bits)) & maxv)) {
+    return null;
+  }
+
+  return result;
+}
+
+/**
+ * Encode data to bech32m format
+ */
+function encodeBech32m(prefix: string, data: Uint8Array): string {
+  const fiveBitData = convertBits(data, 8, 5, true);
+  if (!fiveBitData) {
+    throw new Error('Failed to convert bits');
+  }
+  const checksum = bech32CreateChecksum(prefix, fiveBitData);
+  const combined = fiveBitData.concat(checksum);
+  return prefix + '1' + combined.map((d) => BECH32_CHARSET[d]).join('');
+}
+
+/**
+ * Convert hex string to bech32m encoded address
+ * @param hexString The hex string (with or without 0x prefix)
+ * @param prefix The bech32m prefix (e.g., 'nft', 'col')
+ * @returns Bech32m encoded string
+ */
+function hexToBech32m(hexString: string, prefix: string): string {
+  // Remove 0x prefix if present
+  const hex = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
+
+  // Convert hex to bytes
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+  }
+
+  return encodeBech32m(prefix, bytes);
+}
+
 /**
  * Encodes a Uint8Array to Base58 string
  * @param bytes The bytes to encode
@@ -226,12 +331,32 @@ export function clearDexieOfferCache(): void {
 function parseOfferItems(items: DexieOfferItem[]): Array<NFTItem | AssetItem> {
   return items.map((item) => {
     if (item.is_nft) {
+      // Convert hex IDs to bech32m format for MintGarden URLs
+      let nftId: string | null = null;
+      let collectionId: string | null = null;
+
+      try {
+        if (item.id) {
+          nftId = hexToBech32m(item.id, 'nft');
+        }
+      } catch (error) {
+        console.error('Failed to encode NFT ID:', item.id, error);
+      }
+
+      try {
+        if (item.collection?.id) {
+          collectionId = hexToBech32m(item.collection.id, 'col');
+        }
+      } catch (error) {
+        console.error('Failed to encode collection ID:', item.collection?.id, error);
+      }
+
       return {
         type: 'nft' as const,
         name: item.name || 'Unknown NFT',
-        nftId: item.id || null,
+        nftId,
         collectionName: item.collection?.name || 'Unknown Collection',
-        collectionId: item.collection?.id || null,
+        collectionId,
         thumbnail: item.preview?.medium || null,
         royaltyPercent: item.nft_data?.royalty ? item.nft_data.royalty / 100 : 0,
       };
