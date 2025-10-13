@@ -645,7 +645,7 @@ body {
 
 .copy-button.success,
 .copy-button.error {
-  animation: fadeInOut 0.6s ease;
+  animation: fadeInOut 0.4s ease;
 }
 
 @keyframes fadeInOut {

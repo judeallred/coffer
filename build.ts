@@ -123,9 +123,21 @@ try {
   console.warn('  ⚠ Failed to copy manifest.json:', error);
 }
 
+// Copy and modify service worker with version injection
 try {
-  await Deno.copyFile('./src/sw.js', './dist/sw.js');
-  console.log('  ✓ Copied service worker');
+  // Generate a version stamp using current timestamp
+  const buildVersion = new Date().getTime().toString();
+  console.log(`  ℹ️ Build version: ${buildVersion}`);
+
+  // Read the service worker source
+  let swContent = await Deno.readTextFile('./src/sw.js');
+
+  // Replace the version placeholder with the actual build version
+  swContent = swContent.replace('/* BUILD_VERSION_PLACEHOLDER */', buildVersion);
+
+  // Write the modified service worker to dist
+  await Deno.writeTextFile('./dist/sw.js', swContent);
+  console.log('  ✓ Copied service worker with version injection');
 } catch (error) {
   console.warn('  ⚠ Failed to copy service worker:', error);
 }

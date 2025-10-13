@@ -1,7 +1,9 @@
 // Coffer Service Worker
 // Minimal service worker for PWA installation capability
 
-const CACHE_NAME = 'coffer-v1';
+// Version is injected at build time - DO NOT EDIT THE PLACEHOLDER
+const VERSION = '/* BUILD_VERSION_PLACEHOLDER */';
+const CACHE_NAME = `coffer-${VERSION}`;
 const urlsToCache = [
   './',
   './index.html',

@@ -60,21 +60,21 @@ export function SimpleCombinedOutput({
 
       // Trigger success animation - fade to checkmark
       setButtonAnimation('success');
-      setTimeout(() => setButtonEmoji('✓'), 300); // Change emoji at halfway point
+      setTimeout(() => setButtonEmoji('✅'), 100); // Change emoji at halfway point
       setTimeout(() => {
         setButtonEmoji('📋');
         setButtonAnimation('');
-      }, 600);
+      }, 400);
     } catch (error) {
       onLogError(`Failed to copy to clipboard: ${error}`, 'error');
 
       // Trigger error animation - fade to frown
       setButtonAnimation('error');
-      setTimeout(() => setButtonEmoji('☹'), 300); // Change emoji at halfway point
+      setTimeout(() => setButtonEmoji('☹'), 100); // Change emoji at halfway point
       setTimeout(() => {
         setButtonEmoji('📋');
         setButtonAnimation('');
-      }, 600);
+      }, 400);
     }
   };
 
@@ -112,12 +112,6 @@ export function SimpleCombinedOutput({
             </button>
           )}
         </div>
-
-        {combinedOffer && (
-          <p className='output-hint'>
-            Click the text field above to select all and copy manually if needed
-          </p>
-        )}
       </div>
     </div>
   );
