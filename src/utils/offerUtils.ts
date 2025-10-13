@@ -1,5 +1,75 @@
 // Utility functions for Chia offer handling and validation
 
+// Base58 encoding utilities
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+/**
+ * Encodes a Uint8Array to Base58 string
+ * @param bytes The bytes to encode
+ * @returns Base58 encoded string
+ */
+function encodeBase58(bytes: Uint8Array): string {
+  if (bytes.length === 0) return '';
+
+  // Convert bytes to a big integer
+  let num = BigInt(0);
+  for (let i = 0; i < bytes.length; i++) {
+    num = num * BigInt(256) + BigInt(bytes[i]);
+  }
+
+  // Convert to base58
+  let result = '';
+  while (num > BigInt(0)) {
+    const remainder = Number(num % BigInt(58));
+    result = BASE58_ALPHABET[remainder] + result;
+    num = num / BigInt(58);
+  }
+
+  // Add leading '1's for leading zero bytes
+  for (let i = 0; i < bytes.length; i++) {
+    if (bytes[i] === 0) {
+      result = '1' + result;
+    } else {
+      break;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Converts an offer string to its ID
+ * @param offerString The bech32-encoded offer string (starts with 'offer1')
+ * @returns The Base58-encoded offer ID, or null if conversion fails
+ */
+export async function offerStringToId(offerString: string): Promise<string | null> {
+  try {
+    // Validate that it's an offer string
+    if (!offerString || !offerString.toLowerCase().startsWith('offer1')) {
+      return null;
+    }
+
+    // Normalize to lowercase (bech32 standard)
+    const normalizedOffer = offerString.toLowerCase();
+
+    // Convert the offer string to UTF-8 bytes
+    const encoder = new TextEncoder();
+    const offerBytes = encoder.encode(normalizedOffer);
+
+    // Hash the bytes with SHA256
+    const hashBuffer = await crypto.subtle.digest('SHA-256', offerBytes);
+    const hashArray = new Uint8Array(hashBuffer);
+
+    // Encode the hash in Base58
+    const offerId = encodeBase58(hashArray);
+
+    return offerId;
+  } catch (error) {
+    console.error('Error converting offer string to ID:', error);
+    return null;
+  }
+}
+
 /**
  * Checks if a string is a 44-character base64 offer ID
  * @param value The string to check

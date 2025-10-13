@@ -1,0 +1,40 @@
+/// <reference lib="deno.ns" />
+import { assertEquals } from '@std/assert';
+import { offerStringToId } from '../src/utils/offerUtils.ts';
+
+Deno.test('offerStringToId - converts offer string to ID correctly', async () => {
+  const offerString =
+    'offer1qqz83wcsltt6wcmqvpsxygqq6tmp20fkzcmnnwmf7mff2a7a0shrpjyfl0ytl6e7hwt0887qncnmeemqatsymvx33fkmgcsm4hvyv2ak6x9xmdrzlvl5q9gm53c97c97aaeu9w7kgm3k6uer5vnwg85fv4wp7cp7wakkphxwczhd6ddjtf24qewtxs8puwhkv7ak7uzfvtup8zu8rjhmv8kcd5rue94ny5znv0mf6c2gv4s46zax6a9wrzxyzvstm343y95gk9v4nud7m8qd8uxdtx7wnu49anrvd7njl9wlm07dk7rzcqp2n9f8kvrng4eueap854ka09z00rwmsheadhc7hlk9wvfhc86a0muj5n080u97h4u8p3zzspzehy47f5k8d2534sumk7mdacnwvqk9mxaxkuu73gyyulga0kmx0qawu0wwrzcv9ac6vwzxdhwhrkwvjyl79rwp8vj5n6jmnenj2fadg8h9mxfhvvpsxrrd5lvls8d9sxwwd0xuqpn0tr7x0nukdup2ln896m4n9meamuh0v38u53rve9t90wtrzptkm602sat9dksf97u58tncxmld56d3cntnxszxkmvq5n407zmk84eyc74lx7kt7u60j5ylhrr9s2737f8xa470cganltw2925l70ajhlahxx7ddk8sskssrtr6uh2fjfw07em7ah009sa2kuhdksd7rz6hxwwxv2n7nmmyeqhn3wzutchl44zkymjtgz9xml306zv02g4t3wqa8vy5fhtkhwjsc0jk46e433zlclnpt0memngfnkct78dgetl07qkpyalry6c4tl9uel2l8r4mnxk8n2jvctpenvnk6pl7cjk9eha3w0gj5uysdca2zdlfuk2wu0f889nt29ttrrwusvm6uc0r60e6608u309jdnccggxdgv0eu3y2ua6sthmuktxg86lj8802llck3268cckemuhwkwytgl22pu7arjgehdvd2un7m7w6npcfch08484wn496h05jhx5mdewh49rqkyvqp0kf04kq8hvfh8';
+  const expectedId = 'HR7aHbCXsJto7iS9uBkiiGJx6iGySxoNqUGQvrZfnj6B';
+
+  const result = await offerStringToId(offerString);
+
+  assertEquals(result, expectedId);
+});
+
+Deno.test('offerStringToId - returns null for invalid offer string', async () => {
+  const invalidOfferString = 'invalid_offer_string';
+
+  const result = await offerStringToId(invalidOfferString);
+
+  assertEquals(result, null);
+});
+
+Deno.test('offerStringToId - returns null for empty string', async () => {
+  const emptyString = '';
+
+  const result = await offerStringToId(emptyString);
+
+  assertEquals(result, null);
+});
+
+Deno.test('offerStringToId - handles uppercase offer string', async () => {
+  // The same offer string but in uppercase
+  const offerString =
+    'OFFER1QQZ83WCSLTT6WCMQVPSXYGQQ6TMP20FKZCMNNWMF7MFF2A7A0SHRPJYFL0YTL6E7HWT0887QNCNMEEMQATSYMVX33FKMGCSM4HVYV2AK6X9XMDRZLVL5Q9GM53C97C97AAEU9W7KGM3K6UER5VNWG85FV4WP7CP7WAKKPHXWCZHD6DDJTF24QEWTXS8PUWHKV7AK7UZFVTUP8ZU8RJHMV8KCD5RUE94NY5ZNV0MF6C2GV4S46ZAX6A9WRZXYZVSTM343Y95GK9V4NUD7M8QD8UXDTX7WNU49ANRVD7NJL9WLM07DK7RZCQP2N9F8KVRNG4EUEAP854KA09Z00RWMSHEADHC7HLK9WVFHC86A0MUJ5N080U97H4U8P3ZZSPZEHY47F5K8D2534SUMK7MDACNWVQK9MXAXKUU73GYYULGA0KMX0QAWU0WWRZCV9AC6VWZXDHWHRKWVJYL79RWP8VJ5N6JMNENJ2FADG8H9MXFHVVPSXRRD5LVLS8D9SXWWD0XUQPN0TR7X0NUKDUP2LN896M4N9MEAMUH0V38U53RVE9T90WTRZPTKM602SAT9DKSF97U58TNCXMLD56D3CNTNXSZXKMVQ5N407ZMK84EYC74LX7KT7U60J5YLHRR9S2737F8XA470CGANLTW2925L70AJHLAHXX7DDK8SSKSSRTR6UH2FJFW07EM7AH009SA2KUHDKSD7RZ6HXWWXV2N7NMMYEQHN3WZUTCHL44ZKYMJTGZ9XML306ZV02G4T3WQA8VY5FHTKHWJSC0JK46E433ZLCLNPT0MEMNGFNKCT78DGETL07QKPYALRY6C4TL9UEL2L8R4MNXK8N2JVCTPENVNK6PL7CJK9EHA3W0GJ5UYSDCA2ZDLFUK2WU0F889NT29TTRRWUSVM6UC0R60E6608U309JDNCCGGXDGV0EU3Y2UA6STHMUKTXG86LJ8802LLCK3268CCKEMUHWKWYTGL22PU7ARJGEHDVD2UN7M7W6NPCFCH08484WN496H05JHX5MDEWH49RQKYVQP0KF04KQ8HVFH8';
+  const expectedId = 'HR7aHbCXsJto7iS9uBkiiGJx6iGySxoNqUGQvrZfnj6B';
+
+  const result = await offerStringToId(offerString);
+
+  assertEquals(result, expectedId);
+});
