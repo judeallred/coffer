@@ -73,7 +73,7 @@ export function DexieOfferInfo({ dexieData, loading }: DexieOfferInfoProps): JSX
                 )
                 : <span className='dexie-nft-collection'>{item.collectionName}</span>}
               {item.royaltyPercent > 0 && (
-                <span className='dexie-nft-royalty'>• {item.royaltyPercent}% fee</span>
+                <span className='dexie-nft-royalty'>• {item.royaltyPercent}% royalty</span>
               )}
             </div>
           </div>
@@ -97,7 +97,7 @@ export function DexieOfferInfo({ dexieData, loading }: DexieOfferInfoProps): JSX
               target='_blank'
               rel='noopener noreferrer'
               className='dexie-logo-link'
-              title='View on Dexie'
+              title='View on dexie'
             >
               <img src={dexieDuckLogo} alt='dexie' className='dexie-logo' />
             </a>

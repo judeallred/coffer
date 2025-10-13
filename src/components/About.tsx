@@ -44,8 +44,8 @@ export function About(): JSX.Element {
                 1000 XCS and want DBX, but there's no direct XCS ↔ DBX market. However, there are
                 XCS ↔ SBX and SBX ↔ DBX markets. By combining offers for XCS → SBX and SBX → DBX,
                 you create a single XCS → DBX offer. If the amounts don't align perfectly (e.g.,
-                1000 XCS → 800 SBX, 1200 SBX → 1000 DBX), the combined offer will show the true
-                final state: 1000 XCS + 400 SBX → 1000 DBX.
+                1000 XCS → 1200 SBX, 1000 SBX → 1000 DBX), the combined offer will show the true
+                final state: 1000 XCS → 1000 DBX + 200 SBX.
               </p>
             </div>
             <div className='use-case'>
@@ -73,7 +73,7 @@ export function About(): JSX.Element {
                 <p className='step-text'>
                   Retrieve offer strings from marketplaces like{' '}
                   <a href='https://dexie.space' target='_blank' rel='noopener noreferrer'>
-                    Dexie
+                    dexie
                   </a>{' '}
                   or{' '}
                   <a href='https://mintgarden.io' target='_blank' rel='noopener noreferrer'>
@@ -92,7 +92,7 @@ export function About(): JSX.Element {
                 <p className='step-text'>
                   Paste or type each offer into the input fields above. You can paste anywhere on
                   the page, or use the input fields directly. Coffer will validate each offer and
-                  show you information from Dexie (if available).
+                  show you information from dexie (if available).
                 </p>
               </div>
             </div>
@@ -145,7 +145,7 @@ export function About(): JSX.Element {
           </a>
           , and the{' '}
           <a href='https://dexie.space' target='_blank' rel='noopener noreferrer'>
-            Dexie
+            dexie
           </a>{' '}
           and{' '}
           <a href='https://mintgarden.io' target='_blank' rel='noopener noreferrer'>
@@ -164,6 +164,21 @@ export function About(): JSX.Element {
               className='qr-code'
             />
           </div>
+        </div>
+
+        <div className='legal-disclaimer-box'>
+          <p className='legal-disclaimer-text'>
+            <strong>Legal Disclaimer:</strong>{' '}
+            This platform provides a tool for combining Chia blockchain offers submitted by users.
+            We do not operate as a regulated financial service provider, broker, or exchange under
+            any framework. We do not endorse, verify, or guarantee the validity, legality, or safety
+            of any offer or transaction. All offers are user-generated and processed
+            cryptographically without our involvement. Blockchain transactions carry inherent
+            financial and technical risks and may be subject to regulatory restrictions in your
+            jurisdiction. By using this tool, you acknowledge and accept full responsibility for all
+            transactions and waive any claims against the platform operators. Use at your own risk.
+            Nothing on this site constitutes trading advice.
+          </p>
         </div>
       </div>
     </section>
