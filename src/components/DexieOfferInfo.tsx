@@ -38,11 +38,30 @@ export function DexieOfferInfo({ dexieData, loading }: DexieOfferInfoProps): JSX
   // Success - display summary
   const { summary } = dexieData;
 
-  const formatItem = (item: typeof summary.offered[0]): string => {
+  const renderItem = (item: typeof summary.offered[0], idx: number): JSX.Element => {
     if (item.type === 'nft') {
-      return item.name;
+      return (
+        <div key={idx} className='dexie-item dexie-nft-item'>
+          {item.thumbnail && (
+            <img src={item.thumbnail} alt={item.name} className='dexie-nft-thumbnail' />
+          )}
+          <div className='dexie-nft-details'>
+            <div className='dexie-nft-name'>{item.name}</div>
+            <div className='dexie-nft-meta'>
+              <span className='dexie-nft-collection'>{item.collectionName}</span>
+              {item.royaltyPercent > 0 && (
+                <span className='dexie-nft-royalty'>• {item.royaltyPercent}% fee</span>
+              )}
+            </div>
+          </div>
+        </div>
+      );
     }
-    return `${item.amount} ${item.code}`;
+    return (
+      <div key={idx} className='dexie-item dexie-asset-item'>
+        • {item.amount} {item.code}
+      </div>
+    );
   };
 
   return (
@@ -54,17 +73,13 @@ export function DexieOfferInfo({ dexieData, loading }: DexieOfferInfoProps): JSX
             {summary && summary.offered.length > 0 && (
               <div className='dexie-items-section'>
                 <span className='dexie-section-label'>Offered:</span>
-                {summary.offered.map((item, idx) => (
-                  <div key={idx} className='dexie-item'>• {formatItem(item)}</div>
-                ))}
+                {summary.offered.map((item, idx) => renderItem(item, idx))}
               </div>
             )}
             {summary && summary.requested.length > 0 && (
               <div className='dexie-items-section'>
                 <span className='dexie-section-label'>Requested:</span>
-                {summary.requested.map((item, idx) => (
-                  <div key={idx} className='dexie-item'>• {formatItem(item)}</div>
-                ))}
+                {summary.requested.map((item, idx) => renderItem(item, idx))}
               </div>
             )}
           </div>
