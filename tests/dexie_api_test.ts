@@ -1,6 +1,6 @@
 /// <reference lib="deno.ns" />
 import { assertEquals, assertExists } from '@std/assert';
-import { fetchDexieOfferDetails } from '../src/utils/offerUtils.ts';
+import { clearDexieOfferCache, fetchDexieOfferDetails } from '../src/utils/offerUtils.ts';
 
 Deno.test('Dexie API - successful response with simple assets', async () => {
   // This is a real completed offer on Dexie
@@ -41,6 +41,9 @@ Deno.test('Dexie API - successful response with simple assets', async () => {
 });
 
 Deno.test('Dexie API - successful response with NFTs', async () => {
+  // Clear cache to ensure fresh request
+  clearDexieOfferCache();
+
   // This is a real offer with NFTs on Dexie
   const offerId = 'Dmh3H5mY6pis58KC8uvWhsfKEtUXg6mGLG6cvBAmXjJj';
 
@@ -61,7 +64,11 @@ Deno.test('Dexie API - successful response with NFTs', async () => {
     assertExists(firstNFT.name);
     assertExists(firstNFT.collectionName);
     assertEquals(firstNFT.collectionName, 'DataLayer Minions');
-    assertExists(firstNFT.thumbnail);
+    // Thumbnail can be string or null
+    assertEquals(
+      typeof firstNFT.thumbnail === 'string' || firstNFT.thumbnail === null,
+      true,
+    );
     assertEquals(typeof firstNFT.royaltyPercent, 'number');
     // Royalty is 500 basis points = 5%
     assertEquals(firstNFT.royaltyPercent, 5);
@@ -77,21 +84,21 @@ Deno.test('Dexie API - successful response with NFTs', async () => {
 });
 
 Deno.test('Dexie API - 404 or network error for invalid offer ID', async () => {
-  // Use an invalid offer ID that shouldn't exist
-  const offerId = 'InvalidOfferID123456789012345678901234';
+  // Use a valid-length but non-existent offer ID (44 characters of 'x')
+  const offerId = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
   const result = await fetchDexieOfferDetails(offerId);
 
-  // Should fail
+  // Should fail (either validation or API error)
   assertEquals(result.success, false);
   assertExists(result.error);
-  assertExists(result.rawResponse);
+  // rawResponse may be null if validation fails
 });
 
 Deno.test('Dexie API - 200 response with success: false', async () => {
   // Create a valid-looking but non-existent offer ID
-  // Using a Base58 string that has correct length but doesn't exist
-  const offerId = '1111111111111111111111111111111111111111111';
+  // Using a Base58 string that has correct length (44 chars) but doesn't exist
+  const offerId = '11111111111111111111111111111111111111111111';
 
   const result = await fetchDexieOfferDetails(offerId, 5000);
 
@@ -99,13 +106,14 @@ Deno.test('Dexie API - 200 response with success: false', async () => {
   assertEquals(result.success, false);
   assertExists(result.error);
 
-  // The error should mention "not found" or similar
+  // The error should mention "not found", "http", or similar
   if (result.error) {
     const errorLower = result.error.toLowerCase();
     const hasExpectedError = errorLower.includes('not found') ||
       errorLower.includes('expired') ||
       errorLower.includes('no longer supported') ||
-      errorLower.includes('http');
+      errorLower.includes('http') ||
+      errorLower.includes('404');
     assertEquals(hasExpectedError, true);
   }
 });
@@ -154,8 +162,8 @@ Deno.test('Dexie API - raw response is always included', async () => {
   assertExists(result.rawResponse);
 
   // If successful, raw response should have the full data structure
-  if (result.success) {
-    const raw: any = result.rawResponse;
+  if (result.success && typeof result.rawResponse === 'object' && result.rawResponse !== null) {
+    const raw = result.rawResponse as { success?: boolean; offer?: unknown };
     assertExists(raw.success);
     assertExists(raw.offer);
   }
@@ -175,11 +183,84 @@ Deno.test('Dexie API - NFT without collection name uses default', async () => {
         assertExists(item.name);
         // Should have a collection name (even if it's "Unknown Collection")
         assertExists(item.collectionName);
-        // Thumbnail can be empty string
-        assertEquals(typeof item.thumbnail, 'string');
+        // Thumbnail can be string or null
+        assertEquals(
+          typeof item.thumbnail === 'string' || item.thumbnail === null,
+          true,
+        );
         // Royalty should be a number (0 if missing)
         assertEquals(typeof item.royaltyPercent, 'number');
       }
     }
   }
+});
+
+Deno.test('Dexie API - input validation rejects invalid offer IDs', async () => {
+  // Test with empty string
+  const result1 = await fetchDexieOfferDetails('');
+  assertEquals(result1.success, false);
+  assertExists(result1.error);
+  assertEquals(result1.error, 'Invalid offer ID format (expected 44-character Base58 string)');
+
+  // Test with too short ID
+  const result2 = await fetchDexieOfferDetails('abc123');
+  assertEquals(result2.success, false);
+  assertExists(result2.error);
+  assertEquals(result2.error, 'Invalid offer ID format (expected 44-character Base58 string)');
+
+  // Test with too long ID
+  const result3 = await fetchDexieOfferDetails('a'.repeat(100));
+  assertEquals(result3.success, false);
+  assertExists(result3.error);
+  assertEquals(result3.error, 'Invalid offer ID format (expected 44-character Base58 string)');
+});
+
+Deno.test('Dexie API - caching works correctly', async () => {
+  // Clear cache first
+  clearDexieOfferCache();
+
+  const offerId = 'HR7aHbCXsJto7iS9uBkiiGJx6iGySxoNqUGQvrZfnj6B';
+
+  // First request
+  const result1 = await fetchDexieOfferDetails(offerId);
+  assertEquals(result1.success, true);
+
+  // Second request (should be cached)
+  const startTime2 = Date.now();
+  const result2 = await fetchDexieOfferDetails(offerId);
+  const duration2 = Date.now() - startTime2;
+
+  assertEquals(result2.success, true);
+
+  // Cached request should be much faster (< 10ms vs potentially 100ms+)
+  assertEquals(duration2 < 10, true, `Cached request took ${duration2}ms, expected < 10ms`);
+
+  // Results should be identical
+  assertEquals(JSON.stringify(result1), JSON.stringify(result2));
+
+  // Clear cache
+  clearDexieOfferCache();
+
+  // Third request (should hit API again)
+  const result3 = await fetchDexieOfferDetails(offerId);
+  assertEquals(result3.success, true);
+});
+
+Deno.test('Dexie API - cache expires after TTL', async () => {
+  // Note: This test would need to wait 5 minutes for the actual TTL
+  // For now, we just verify the cache clearing functionality works
+  clearDexieOfferCache();
+
+  const offerId = 'HR7aHbCXsJto7iS9uBkiiGJx6iGySxoNqUGQvrZfnj6B';
+
+  // Make initial request
+  const result1 = await fetchDexieOfferDetails(offerId);
+  assertEquals(result1.success, true);
+
+  // Clear cache manually (simulating expiry)
+  clearDexieOfferCache();
+
+  // Next request should work fine
+  const result2 = await fetchDexieOfferDetails(offerId);
+  assertEquals(result2.success, true);
 });

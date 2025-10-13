@@ -1,6 +1,13 @@
 // Utility functions for Chia offer handling and validation
 
-import type { AssetItem, DexieOfferResponse, DexieOfferSummary, NFTItem } from '../types/index.ts';
+import type {
+  AssetItem,
+  DexieApiResponse,
+  DexieOfferItem,
+  DexieOfferResponse,
+  DexieOfferSummary,
+  NFTItem,
+} from '../types/index.ts';
 
 // Base58 encoding utilities
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -199,15 +206,108 @@ export function clearOfferCache(): void {
 }
 
 /**
+ * Cache for Dexie API offer details to prevent duplicate requests
+ */
+const dexieOfferCache = new Map<string, { data: DexieOfferResponse; timestamp: number }>();
+const DEXIE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Clears the Dexie offer cache
+ */
+export function clearDexieOfferCache(): void {
+  dexieOfferCache.clear();
+}
+
+/**
+ * Parses offer items (offered or requested) from Dexie API format
+ * @param items Array of DexieOfferItem from the API
+ * @returns Parsed array of NFTItem or AssetItem
+ */
+function parseOfferItems(items: DexieOfferItem[]): Array<NFTItem | AssetItem> {
+  return items.map((item) => {
+    if (item.is_nft) {
+      return {
+        type: 'nft' as const,
+        name: item.name || 'Unknown NFT',
+        collectionName: item.collection?.name || 'Unknown Collection',
+        thumbnail: item.preview?.medium || null,
+        royaltyPercent: item.nft_data?.royalty ? item.nft_data.royalty / 100 : 0,
+      };
+    }
+    return {
+      type: 'asset' as const,
+      code: item.code || item.id || 'UNKNOWN',
+      amount: item.amount || 0,
+    };
+  });
+}
+
+/**
+ * Extracts simplified summary from Dexie API response
+ * @param data The raw Dexie API response
+ * @returns DexieOfferSummary with offered and requested items
+ */
+function extractOfferSummary(data: DexieApiResponse): DexieOfferSummary {
+  const offered = data.offer?.offered ? parseOfferItems(data.offer.offered) : [];
+  const requested = data.offer?.requested ? parseOfferItems(data.offer.requested) : [];
+
+  return {
+    offeredCount: offered.length,
+    requestedCount: requested.length,
+    offered,
+    requested,
+  };
+}
+
+/**
  * Fetches offer details from Dexie API and returns simplified metadata
- * @param offerId The 44-character offer ID
+ *
+ * @param offerId The 44-character Base58-encoded offer ID
  * @param timeoutMs Request timeout in milliseconds (default: 10000)
- * @returns DexieOfferResponse with summary and raw response
+ * @returns DexieOfferResponse with:
+ *   - success: boolean indicating if the request succeeded
+ *   - error: error message if success is false
+ *   - summary: simplified metadata including:
+ *     - offeredCount/requestedCount: number of items
+ *     - offered/requested: arrays of NFTItem or AssetItem
+ *       - NFT items include royaltyPercent as a percentage (5 = 5%, not 500 basis points)
+ *       - thumbnail may be null if not available
+ *   - rawResponse: complete API response for advanced usage
+ *
+ * @example
+ * ```typescript
+ * const result = await fetchDexieOfferDetails('HR7aHbCXsJto7iS9uBkiiGJx6iGySxoNqUGQvrZfnj6B');
+ * if (result.success) {
+ *   console.log(`Offered: ${result.summary.offeredCount} items`);
+ *   for (const item of result.summary.offered) {
+ *     if (item.type === 'nft') {
+ *       console.log(`NFT: ${item.name} - Royalty: ${item.royaltyPercent}%`);
+ *     } else {
+ *       console.log(`${item.amount} ${item.code}`);
+ *     }
+ *   }
+ * }
+ * ```
  */
 export async function fetchDexieOfferDetails(
   offerId: string,
   timeoutMs = 10000,
 ): Promise<DexieOfferResponse> {
+  // Validate offer ID format
+  if (!offerId || offerId.length !== 44) {
+    return {
+      success: false,
+      error: 'Invalid offer ID format (expected 44-character Base58 string)',
+      rawResponse: null,
+    };
+  }
+
+  // Check cache first
+  const cached = dexieOfferCache.get(offerId);
+  if (cached && (Date.now() - cached.timestamp) < DEXIE_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -219,32 +319,49 @@ export async function fetchDexieOfferDetails(
     // Handle non-200 responses
     if (!response.ok) {
       const errorText = await response.text();
-      return {
+      const errorResponse: DexieOfferResponse = {
         success: false,
         error: `HTTP ${response.status}: ${errorText || response.statusText}`,
         rawResponse: { status: response.status, statusText: response.statusText },
       };
+      return errorResponse;
     }
 
-    const data = await response.json();
+    // Parse JSON with error handling
+    let data: DexieApiResponse;
+    try {
+      data = await response.json();
+    } catch (_jsonError) {
+      return {
+        success: false,
+        error: 'Invalid JSON response from Dexie API',
+        rawResponse: null,
+      };
+    }
 
     // Handle 200 response with success: false
     if (!data.success) {
-      return {
+      const errorResponse: DexieOfferResponse = {
         success: false,
         error: data.error_message || 'Unknown error from Dexie API',
         rawResponse: data,
       };
+      return errorResponse;
     }
 
     // Extract summary from successful response
     const summary = extractOfferSummary(data);
 
-    return {
+    const successResponse: DexieOfferResponse = {
       success: true,
       summary,
       rawResponse: data,
     };
+
+    // Cache successful response
+    dexieOfferCache.set(offerId, { data: successResponse, timestamp: Date.now() });
+
+    return successResponse;
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       return {
@@ -262,67 +379,4 @@ export async function fetchDexieOfferDetails(
   } finally {
     clearTimeout(timeoutId);
   }
-}
-
-/**
- * Extracts simplified summary from Dexie API response
- * @param data The raw Dexie API response
- * @returns DexieOfferSummary with offered and requested items
- */
-function extractOfferSummary(data: any): DexieOfferSummary {
-  const offered: Array<NFTItem | AssetItem> = [];
-  const requested: Array<NFTItem | AssetItem> = [];
-
-  // Process offered items
-  if (data.offer?.offered && Array.isArray(data.offer.offered)) {
-    for (const item of data.offer.offered) {
-      if (item.is_nft) {
-        // NFT item
-        offered.push({
-          type: 'nft',
-          name: item.name || 'Unknown NFT',
-          collectionName: item.collection?.name || 'Unknown Collection',
-          thumbnail: item.preview?.medium || '',
-          royaltyPercent: item.nft_data?.royalty ? item.nft_data.royalty / 100 : 0,
-        });
-      } else {
-        // Regular asset
-        offered.push({
-          type: 'asset',
-          code: item.code || item.id || 'UNKNOWN',
-          amount: item.amount || 0,
-        });
-      }
-    }
-  }
-
-  // Process requested items
-  if (data.offer?.requested && Array.isArray(data.offer.requested)) {
-    for (const item of data.offer.requested) {
-      if (item.is_nft) {
-        // NFT item
-        requested.push({
-          type: 'nft',
-          name: item.name || 'Unknown NFT',
-          collectionName: item.collection?.name || 'Unknown Collection',
-          thumbnail: item.preview?.medium || '',
-          royaltyPercent: item.nft_data?.royalty ? item.nft_data.royalty / 100 : 0,
-        });
-      } else {
-        // Regular asset
-        requested.push({
-          type: 'asset',
-          code: item.code || item.id || 'UNKNOWN',
-          amount: item.amount || 0,
-        });
-      }
-    }
-  }
-
-  return {
-    offeredCount: offered.length,
-    requestedCount: requested.length,
-    offered,
-    requested,
-  };
 }

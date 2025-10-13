@@ -19,7 +19,7 @@ export interface NFTItem {
   type: 'nft';
   name: string;
   collectionName: string;
-  thumbnail: string;
+  thumbnail: string | null;
   royaltyPercent: number;
 }
 
@@ -41,4 +41,47 @@ export interface DexieOfferResponse {
   error?: string;
   summary?: DexieOfferSummary;
   rawResponse: unknown;
+}
+
+// Raw Dexie API response structure
+export interface DexieOfferItem {
+  'is_nft'?: boolean;
+  name?: string;
+  code?: string;
+  id?: string;
+  amount?: number;
+  collection?: {
+    name?: string;
+    id?: string;
+    website?: string;
+    twitter?: string;
+  };
+  preview?: {
+    tiny?: string;
+    medium?: string;
+  };
+  'nft_data'?: {
+    royalty?: number;
+    'data_uris'?: string[];
+    'metadata_uris'?: string[];
+    'data_hash'?: string;
+    'metadata_hash'?: string;
+  };
+}
+
+export interface DexieApiResponse {
+  success: boolean;
+  'error_message'?: string;
+  offer?: {
+    id?: string;
+    status?: number;
+    offer?: string;
+    offered?: DexieOfferItem[];
+    requested?: DexieOfferItem[];
+    price?: number;
+    fees?: number;
+    'date_found'?: string;
+    'date_completed'?: string | null;
+    'date_pending'?: string | null;
+  };
 }

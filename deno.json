@@ -47,11 +47,11 @@
         "explicit-function-return-type",
         "no-const-assign",
         "no-implicit-declare-namespace",
+        "no-explicit-any",
         "prefer-const"
       ],
       "exclude": [
-        "no-undef",
-        "no-explicit-any"
+        "no-undef"
       ]
     }
   }
