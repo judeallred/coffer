@@ -53,6 +53,14 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: List dist contents (debug)
+        run: |
+          echo "📋 Contents of dist/ directory:"
+          ls -lah dist/
+          echo ""
+          echo "🔍 WASM files in dist/:"
+          ls -lh dist/*.wasm dist/*.js | grep -E "wasm" || echo "No WASM files found!"
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
