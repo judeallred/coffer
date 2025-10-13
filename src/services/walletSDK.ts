@@ -1,14 +1,22 @@
 // Chia Wallet SDK WASM integration for offer combination only
-import type { ChiaWalletSDK } from '../types/wasm.ts';
+// We use the official npm package's TypeScript definitions (chia_wallet_sdk_wasm.d.ts)
+// and extend them with our custom loader's exports
 
-let wasmModule: ChiaWalletSDK | null = null;
+// Type for the WASM module - combines official types with our custom loader exports
+type WasmModule = typeof import('chia-wallet-sdk-wasm') & {
+  // Our custom loader adds these init functions
+  default?: () => Promise<void>;
+  initWasm?: () => Promise<void>;
+};
+
+let wasmModule: WasmModule | null = null;
 
 // Initialize the WASM module from local files using ArrayBuffer method
 export async function initWalletSDK(): Promise<void> {
   try {
     // Import our custom WASM loader that uses fetch() + ArrayBuffer
-    // This bypasses MIME type issues by not importing .wasm as an ES module
-    const chiaSDK = await import('chia-wallet-sdk-wasm') as unknown as ChiaWalletSDK;
+    // This is the standard browser approach for loading WASM modules
+    const chiaSDK = (await import('chia-wallet-sdk-wasm')) as unknown as WasmModule;
 
     // Our custom loader exports a default init function
     // This uses WebAssembly.instantiate() with ArrayBuffer instead of ES module import
@@ -144,30 +152,15 @@ export function combineOffers(
       // 1. Collect all coin spends from all offers
       const allCoinSpends = [];
       const allSignatures = [];
-      const usedCoins = new Set<string>();
 
       for (let i = 0; i < spendBundles.length; i++) {
         const bundle = spendBundles[i];
         console.log(`🔍 Processing SpendBundle ${i + 1}...`);
 
-        // Add all coin spends, checking for conflicts
+        // Add all coin spends from this bundle
         if (bundle.coinSpends && Array.isArray(bundle.coinSpends)) {
           for (const coinSpend of bundle.coinSpends) {
-            if (coinSpend.coin && coinSpend.coin.coinName) {
-              const coinName = Array.from(coinSpend.coin.coinName).join(',');
-
-              if (usedCoins.has(coinName)) {
-                return {
-                  success: false,
-                  error: `Coin conflict detected: Same coin is being spent in multiple offers`,
-                };
-              }
-
-              usedCoins.add(coinName);
-              allCoinSpends.push(coinSpend);
-            } else {
-              allCoinSpends.push(coinSpend);
-            }
+            allCoinSpends.push(coinSpend);
           }
         }
 
