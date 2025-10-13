@@ -66,25 +66,28 @@ export function DexieOfferInfo({ dexieData, loading }: DexieOfferInfoProps): JSX
 
   return (
     <div className='dexie-offer-info success'>
-      <div className='dexie-info-header' onClick={() => setIsExpanded(!isExpanded)}>
-        <div className='dexie-info-left'>
-          <img src={dexieDuckLogo} alt='dexie' className='dexie-logo' />
-          <div className='dexie-info-details'>
-            {summary && summary.offered.length > 0 && (
-              <div className='dexie-items-section'>
-                <span className='dexie-section-label'>Offered:</span>
-                {summary.offered.map((item, idx) => renderItem(item, idx))}
-              </div>
-            )}
-            {summary && summary.requested.length > 0 && (
-              <div className='dexie-items-section'>
-                <span className='dexie-section-label'>Requested:</span>
-                {summary.requested.map((item, idx) => renderItem(item, idx))}
-              </div>
-            )}
-          </div>
+      <div className='dexie-info-header'>
+        <img
+          src={dexieDuckLogo}
+          alt='dexie'
+          className='dexie-logo clickable'
+          onClick={() => setIsExpanded(!isExpanded)}
+          title='Click to view raw JSON'
+        />
+        <div className='dexie-info-boxes'>
+          {summary && summary.requested.length > 0 && (
+            <div className='dexie-info-box'>
+              <span className='dexie-section-label'>Requested:</span>
+              {summary.requested.map((item, idx) => renderItem(item, idx))}
+            </div>
+          )}
+          {summary && summary.offered.length > 0 && (
+            <div className='dexie-info-box'>
+              <span className='dexie-section-label'>Offered:</span>
+              {summary.offered.map((item, idx) => renderItem(item, idx))}
+            </div>
+          )}
         </div>
-        <span className={`dexie-expand-icon ${isExpanded ? 'expanded' : ''}`}>▼</span>
       </div>
 
       {isExpanded && (
