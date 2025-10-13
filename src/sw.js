@@ -7,9 +7,8 @@ const urlsToCache = [
   './index.html',
   './main.js',
   './styles/global.css',
-  './favicon.svg',
-  './favicon-32x32.png',
-  './favicon.ico',
+  './assets/coffer.png',
+  './assets/tip-qr-code.png',
 ];
 
 // Install event - cache essential resources

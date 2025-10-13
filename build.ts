@@ -101,16 +101,19 @@ try {
   console.warn('  ⚠ Failed to copy CSS:', error);
 }
 
-// Copy favicons and images
-const imageFiles = ['favicon.ico', 'favicon.svg', 'favicon-32x32.png', 'tip-qr-code.png'];
-for (const imageFile of imageFiles) {
-  try {
-    await Deno.copyFile(`./src/${imageFile}`, `./dist/${imageFile}`);
-  } catch {
-    console.warn(`  ⚠ Failed to copy ${imageFile}`);
+// Copy assets folder
+try {
+  await Deno.mkdir('./dist/assets', { recursive: true });
+  // Copy all files from src/assets to dist/assets
+  for await (const entry of Deno.readDir('./src/assets')) {
+    if (entry.isFile) {
+      await Deno.copyFile(`./src/assets/${entry.name}`, `./dist/assets/${entry.name}`);
+    }
   }
+  console.log('  ✓ Copied assets folder');
+} catch (error) {
+  console.warn('  ⚠ Failed to copy assets:', error);
 }
-console.log('  ✓ Copied favicons and images');
 
 // Copy PWA files
 try {

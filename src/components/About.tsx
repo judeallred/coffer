@@ -35,7 +35,7 @@ export function About(): JSX.Element {
           </p>
           <div className='qr-code-container'>
             <img
-              src='./tip-qr-code.png'
+              src='./assets/tip-qr-code.png'
               alt='Tip address QR code'
               className='qr-code'
             />
