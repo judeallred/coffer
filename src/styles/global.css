@@ -520,7 +520,14 @@ body {
 .input-status {
   font-size: 1.25rem;
   min-width: 1.5rem;
+  width: 1.5rem;
   text-align: center;
+  transition: opacity 0.2s ease;
+}
+
+.input-status.hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .delete-button {
@@ -530,6 +537,7 @@ body {
   border-radius: var(--radius-sm);
   width: 2rem;
   height: 2rem;
+  min-width: 2rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -541,10 +549,18 @@ body {
   text-shadow: 0 0 3px rgba(255, 0, 0, 0.8);
 }
 
-.delete-button:hover {
+.delete-button:hover:not(.hidden) {
   background: rgba(255, 0, 0, 0.1);
   box-shadow: 0 0 12px rgba(255, 0, 0, 0.5);
   text-shadow: 0 0 5px rgba(255, 0, 0, 1);
+}
+
+.delete-button.hidden {
+  opacity: 0;
+  pointer-events: none;
+  cursor: default;
+  box-shadow: none;
+  text-shadow: none;
 }
 
 .input-error {
@@ -637,10 +653,17 @@ body {
   font-family: 'Courier New', monospace;
   transition: opacity 0.3s ease;
   white-space: nowrap;
+  min-width: 3.5rem;
 }
 
-.copy-button:hover {
+.copy-button:hover:not(.hidden) {
   background: rgba(0, 255, 0, 0.1);
+}
+
+.copy-button.hidden {
+  opacity: 0;
+  pointer-events: none;
+  cursor: default;
 }
 
 .copy-button.success,

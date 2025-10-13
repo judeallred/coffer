@@ -114,6 +114,18 @@ export function SimpleOfferInputs({
         }
       }
 
+      // Check if this offer was already added (to avoid duplicate processing)
+      const alreadyAdded = offers.some((o) => o.content === offerToAdd);
+      if (alreadyAdded) {
+        // Clear the input field since it's a duplicate
+        setInputValues((prev) => {
+          const newValues = [...prev];
+          newValues[index] = '';
+          return newValues;
+        });
+        return;
+      }
+
       // Add the offer (this will trigger validation)
       await onAddOffer(offerToAdd);
       // useEffect will handle adding new empty input
@@ -197,22 +209,21 @@ export function SimpleOfferInputs({
                   className={`offer-input ${status}`}
                   disabled={disabled}
                 />
-                <div className='input-status'>
+                <div className={`input-status ${status === 'empty' ? 'hidden' : ''}`}>
                   {getStatusIcon(status)}
                 </div>
-                {!isLastInput && (
-                  <button
-                    type='button'
-                    className='delete-button'
-                    onClick={() => {
-                      const offer = offers.find((o) => o.content === value);
-                      if (offer) onDeleteOffer(offer.id);
-                    }}
-                    title='Remove this offer'
-                  >
-                    🗑️
-                  </button>
-                )}
+                <button
+                  type='button'
+                  className={`delete-button ${isLastInput ? 'hidden' : ''}`}
+                  onClick={() => {
+                    const offer = offers.find((o) => o.content === value);
+                    if (offer) onDeleteOffer(offer.id);
+                  }}
+                  title='Remove this offer'
+                  disabled={isLastInput}
+                >
+                  🗑️
+                </button>
               </div>
 
               {error && (

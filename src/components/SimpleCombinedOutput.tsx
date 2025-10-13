@@ -101,16 +101,15 @@ export function SimpleCombinedOutput({
             placeholder='Combined offer will appear here...'
             onClick={(e) => (e.target as HTMLInputElement).select()}
           />
-          {combinedOffer && (
-            <button
-              type='button'
-              className={`copy-button ${buttonAnimation}`}
-              onClick={handleCopyToClipboard}
-              title='Copy to clipboard'
-            >
-              {buttonEmoji}
-            </button>
-          )}
+          <button
+            type='button'
+            className={`copy-button ${buttonAnimation} ${!combinedOffer ? 'hidden' : ''}`}
+            onClick={handleCopyToClipboard}
+            title='Copy to clipboard'
+            disabled={!combinedOffer}
+          >
+            {buttonEmoji}
+          </button>
         </div>
       </div>
     </div>
