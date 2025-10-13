@@ -1,0 +1,100 @@
+---
+description: Guidelines for working with WASM module loading in the Coffer project
+globs: src/wasm/**,src/services/walletSDK.ts,build.ts
+---
+
+# WASM Module Loading
+
+## Critical Implementation Details
+
+The Chia Wallet SDK WASM module uses a custom loader to avoid browser MIME type issues.
+
+### Custom WASM Loader
+
+**File**: [src/wasm/chia_wallet_sdk_wasm.js](mdc:src/wasm/chia_wallet_sdk_wasm.js)
+
+This loader uses `fetch()` + `WebAssembly.instantiate()` with `ArrayBuffer` instead of ES module imports:
+
+```javascript
+const wasmResponse = await fetch('./chia_wallet_sdk_wasm_bg.wasm');
+const wasmArrayBuffer = await wasmResponse.arrayBuffer();
+const wasmModuleInstance = await WebAssembly.instantiate(wasmArrayBuffer, imports);
+```
+
+**Why**: Browsers enforce strict MIME type checking for module scripts. Loading `.wasm` as an ES module requires the server to send `application/wasm+esm` MIME type, which many servers (including GitHub Pages) don't support. Using `ArrayBuffer` bypasses this requirement.
+
+### Build Configuration
+
+**File**: [build.ts](mdc:build.ts)
+
+The build process MUST mark WASM-related imports as external:
+
+```typescript
+// Mark chia-wallet-sdk-wasm as external
+build.onResolve({ filter: /^chia-wallet-sdk-wasm/ }, (args) => {
+  return { path: args.path, external: true };
+});
+
+// Mark WASM background JS files as external
+build.onResolve({ filter: /chia_wallet_sdk_wasm.*\.js$/ }, (args) => {
+  return { path: args.path, external: true };
+});
+
+// Mark WASM files as external
+build.onResolve({ filter: /\.wasm$/ }, (args) => {
+  return { path: args.path, external: true };
+});
+```
+
+**Why**: If these files are bundled, esbuild will try to inline the WASM imports, which recreates the MIME type problem.
+
+### Import Map Configuration
+
+**File**: [src/index.html](mdc:src/index.html)
+
+The import map resolves `chia-wallet-sdk-wasm` to our custom loader:
+
+```json
+{
+  "imports": {
+    "chia-wallet-sdk-wasm": "./chia_wallet_sdk_wasm.js"
+  }
+}
+```
+
+### Service Integration
+
+**File**: [src/services/walletSDK.ts](mdc:src/services/walletSDK.ts)
+
+Initialize WASM using the custom loader's exported functions:
+
+```typescript
+const wasmModule = await import('chia-wallet-sdk-wasm');
+if (wasmModule.initWasm) {
+  await wasmModule.initWasm();
+} else if (wasmModule.default) {
+  await wasmModule.default();
+}
+```
+
+## Rules for WASM Changes
+
+1. ❌ **NEVER** modify files in `src/wasm/` directory except for the custom loader
+2. ❌ **NEVER** remove the external declarations from `build.ts`
+3. ❌ **NEVER** try to bundle or inline WASM imports
+4. ✅ **ALWAYS** test both dev and production builds when changing WASM loading
+5. ✅ **ALWAYS** verify the browser console shows "WASM module initialized successfully"
+6. ✅ **ALWAYS** check that `dist/main.js` doesn't contain `import*as X from"./chia_wallet_sdk_wasm_bg.wasm"`
+
+## Testing WASM Loading
+
+```bash
+# Test dev environment
+deno task dev
+# Open browser and check console for WASM initialization
+
+# Test production build
+deno task build
+deno task serve:dist
+# Open http://localhost:8001 and verify WASM loads
+```

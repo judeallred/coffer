@@ -1,0 +1,148 @@
+---
+alwaysApply: true
+---
+
+# Coffer Project Architecture
+
+## Technology Stack
+
+- **Runtime**: Deno
+- **Frontend**: Preact with TypeScript (strict mode)
+- **Blockchain**: Chia Wallet SDK (WASM)
+- **Styling**: CSS with custom properties (no CSS-in-JS)
+- **Build**: esbuild
+- **Testing**: Deno test + Puppeteer for e2e
+- **Deployment**: GitHub Pages
+
+## Project Structure
+
+```
+/Users/judeallred/code/coffer/
+├── src/
+│   ├── components/        # Preact components
+│   │   ├── App.tsx       # Main app component
+│   │   ├── Header.tsx
+│   │   ├── SimpleOfferInputs.tsx
+│   │   ├── SimpleCombinedOutput.tsx
+│   │   ├── ErrorLog.tsx
+│   │   └── About.tsx
+│   ├── services/          # Business logic services
+│   │   └── walletSDK.ts  # WASM module initialization
+│   ├── utils/             # Utility functions
+│   │   └── offerUtils.ts # Offer processing utilities
+│   ├── types/             # TypeScript type definitions
+│   │   ├── index.ts      # General types
+│   │   └── wasm.ts       # WASM module types
+│   ├── wasm/              # ⚠️ DO NOT MODIFY
+│   │   ├── chia_wallet_sdk_wasm.js       # Custom loader
+│   │   ├── chia_wallet_sdk_wasm_bg.js
+│   │   ├── chia_wallet_sdk_wasm_bg.wasm
+│   │   └── chia_wallet_sdk_wasm.d.ts
+│   ├── styles/
+│   │   └── global.css    # Global styles and CSS variables
+│   ├── index.html        # HTML template with import map
+│   └── main.tsx          # Application entry point
+├── tests/
+│   ├── integration/       # Integration tests
+│   │   └── offer_combining_test.ts
+│   └── e2e/               # End-to-end tests
+│       ├── web_ui_test.ts
+│       └── base_path_build_test.ts
+├── build.ts              # Production build script
+├── dev.ts                # Development server
+├── deno.json             # Deno configuration & tasks
+└── deno.lint.json        # Linter rules
+```
+
+## Key Files
+
+### Entry Points
+- **[src/main.tsx](mdc:src/main.tsx)**: Application entry point, renders root component
+- **[src/index.html](mdc:src/index.html)**: HTML template with import map and BASE_PATH placeholder
+
+### Build & Dev
+- **[build.ts](mdc:build.ts)**: Production build using esbuild, handles BASE_PATH injection
+- **[dev.ts](mdc:dev.ts)**: Development server with hot reload and WASM handling
+
+### Core Functionality
+- **[src/components/App.tsx](mdc:src/components/App.tsx)**: Main application logic, state management, WASM initialization
+- **[src/services/walletSDK.ts](mdc:src/services/walletSDK.ts)**: WASM module initialization and management
+- **[src/utils/offerUtils.ts](mdc:src/utils/offerUtils.ts)**: Offer parsing, validation, and caching
+
+### Configuration
+- **[deno.json](mdc:deno.json)**: Deno tasks, imports, compiler options, formatting rules
+- **[deno.lint.json](mdc:deno.lint.json)**: Custom linting rules
+
+## Critical Patterns
+
+### State Management
+- Uses Preact's `useState` and `useEffect` hooks
+- State is managed in App.tsx and passed down to child components
+- No global state management library (Redux, MobX, etc.)
+
+### WASM Initialization
+- WASM is initialized asynchronously in App.tsx `useEffect`
+- `isWasmInitialized` state tracks initialization status
+- All WASM operations are guarded by initialization check
+- See [wasm-loading.mdc](mdc:.cursor/rules/wasm-loading.mdc) for details
+
+### Error Handling
+- Errors are logged to the ErrorLog component
+- WASM initialization failures are caught and displayed to user
+- Network errors have timeouts and retries
+
+### Type Safety
+- Strict TypeScript mode enabled
+- Explicit return types required for functions
+- Custom types defined in [src/types/](mdc:src/types/)
+- WASM types defined in [src/types/wasm.ts](mdc:src/types/wasm.ts)
+
+## Styling Approach
+
+- **No CSS-in-JS**: styled-components was removed
+- **CSS Classes**: Use semantic class names
+- **CSS Custom Properties**: For theming (defined in global.css)
+- **Global Styles**: [src/styles/global.css](mdc:src/styles/global.css)
+
+## API Integration
+
+The app fetches offer data from external APIs:
+- **Dexie API**: `https://api.dexie.space/v1/offers/{offer_id}`
+- **MintGarden API**: `https://api.mintgarden.io/offers/{offer_id}`
+
+Caching is implemented in [src/utils/offerUtils.ts](mdc:src/utils/offerUtils.ts).
+
+## Testing Strategy
+
+1. **Integration Tests**: Test WASM integration without browser
+2. **Build Tests**: Verify build output correctness (BASE_PATH)
+3. **E2E Tests**: Full browser testing with Puppeteer (slower, use sparingly)
+
+## Deployment
+
+- **GitHub Pages**: Deployed to `https://judeallred.github.io/coffer/`
+- **BASE_PATH**: Set in GitHub Actions to `/coffer`
+- **Workflow**: [.github/workflows/deploy.yml](mdc:.github/workflows/deploy.yml)
+
+## Development Commands
+
+```bash
+deno task dev              # Start dev server
+deno task build            # Build for production
+deno task serve:dist       # Test production build locally
+deno task format           # Check formatting
+deno task lint             # Run linter
+deno task test             # Run all tests
+deno task test:integration # Run integration tests only
+```
+
+## Rules for Architectural Changes
+
+1. ✅ Use functional Preact components with hooks
+2. ✅ Keep state management in App.tsx, pass down props
+3. ✅ Add new utilities to appropriate directories (`utils/`, `services/`, `types/`)
+4. ✅ Write tests for new functionality
+5. ❌ Don't add CSS-in-JS libraries
+6. ❌ Don't modify WASM files (except the custom loader when necessary)
+7. ❌ Don't add global state management without discussion
+8. ❌ Don't use `any` type without strong justification

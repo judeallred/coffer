@@ -1,0 +1,94 @@
+---
+alwaysApply: true
+---
+
+# Verification Workflow
+
+## After Every Code Change
+
+You MUST ensure these commands pass before considering any task complete:
+
+### 1. Format Check ✨
+```bash
+deno task format
+```
+- Verifies code follows formatting standards
+- Fix issues with: `deno fmt --ignore=src/wasm,node_modules,dist`
+
+### 2. Linting 🔍
+```bash
+deno task lint
+```
+- Checks code quality and potential bugs
+- Must pass with zero errors
+- Note: Use `globalThis` instead of `window` in Deno code
+
+### 3. Tests ✅
+```bash
+deno task test
+```
+- Runs unit, integration, and e2e tests
+- All tests must pass
+
+### 4. Build 🏗️
+```bash
+deno task build
+```
+- Verifies the production build succeeds
+- Check that built files are correct
+
+## Full Verification Command
+
+Run all checks at once:
+
+```bash
+deno task format && deno task lint && deno task test:integration && deno task build
+```
+
+## Testing the Built Output
+
+After building, test the production output:
+
+```bash
+# Start the production server
+deno task serve:dist
+
+# Open http://localhost:8001 in browser
+# Verify:
+# - ✅ Page loads without errors
+# - ✅ WASM initializes (check console)
+# - ✅ All features work correctly
+```
+
+## Pre-Commit Checks
+
+The project has Git hooks that run format, lint, and build. These cannot be skipped unless explicitly requested by the user.
+
+## Critical Rules
+
+1. ❌ **NEVER** skip verification steps
+2. ❌ **NEVER** commit code that doesn't pass all checks
+3. ❌ **NEVER** use `--no-verify` flag unless user explicitly requests it
+4. ✅ **ALWAYS** run full verification before marking tasks complete
+5. ✅ **ALWAYS** test both dev and production environments for significant changes
+6. ✅ **ALWAYS** check browser console for errors after changes
+
+## When Tests Fail
+
+1. **Read the error message carefully** - it usually tells you exactly what's wrong
+2. **Fix the issue** - don't try to work around failing tests
+3. **Re-run tests** - verify the fix worked
+4. **If tests are incorrect** - inform the user and discuss before modifying tests
+
+## When Formatting/Linting Fails
+
+1. **Auto-fix formatting**: `deno fmt --ignore=src/wasm,node_modules,dist`
+2. **Review linting errors** - these often indicate real bugs
+3. **Fix the root cause** - don't suppress warnings unless necessary
+4. **Re-run checks** - verify all issues are resolved
+
+## Additional Notes
+
+- Integration tests are faster than e2e tests - prefer them when possible
+- E2E tests with Puppeteer can be slow - use integration tests for quick validation
+- The `src/wasm/` directory is ignored by formatters and linters - never modify those files

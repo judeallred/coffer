@@ -1,0 +1,122 @@
+---
+description: Guidelines for BASE_PATH configuration and deployment
+globs: build.ts,.github/workflows/**,src/index.html
+---
+
+# BASE_PATH Configuration System
+
+## Overview
+
+Coffer supports deployment to different base paths using the `BASE_PATH` environment variable. This enables deployment to root (`/`) or subdirectories (`/coffer/`, `/myapp/`, etc.).
+
+## How It Works
+
+### Build-Time Injection
+
+**File**: [build.ts](mdc:build.ts)
+
+The build script reads `BASE_PATH` from the environment and injects a `<base>` tag into HTML:
+
+```typescript
+const basePath = Deno.env.get('BASE_PATH') || '/';
+const normalizedBasePath = basePath.endsWith('/') ? basePath : `${basePath}/`;
+
+if (normalizedBasePath !== '/') {
+  baseTag = `    <base href="${normalizedBasePath}">`;
+}
+
+html = html.replace('<!-- BASE_PATH_PLACEHOLDER -->', baseTag);
+```
+
+### HTML Template
+
+**File**: [src/index.html](mdc:src/index.html)
+
+The HTML includes a placeholder where the base tag will be injected:
+
+```html
+<!-- BASE_PATH_PLACEHOLDER -->
+```
+
+**Important**: This comment MUST remain in the HTML. Do not replace it manually.
+
+### GitHub Actions Configuration
+
+**File**: [.github/workflows/deploy.yml](mdc:.github/workflows/deploy.yml)
+
+Set the BASE_PATH environment variable during build:
+
+```yaml
+- name: Build project
+  run: deno task build
+  env:
+    BASE_PATH: /coffer
+```
+
+## Usage Examples
+
+```bash
+# Build for localhost (default)
+deno task build
+# or explicitly:
+BASE_PATH=/ deno task build
+
+# Build for GitHub Pages
+BASE_PATH=/coffer deno task build
+
+# Build for custom subdirectory
+BASE_PATH=/myapp deno task build
+```
+
+## How Paths Are Resolved
+
+When `BASE_PATH=/coffer` is set:
+- `<base href="/coffer/">` is added to HTML
+- `./chia_wallet_sdk_wasm.js` → `https://example.com/coffer/chia_wallet_sdk_wasm.js`
+- `./main.js` → `https://example.com/coffer/main.js`
+- `./styles/global.css` → `https://example.com/coffer/styles/global.css`
+
+When `BASE_PATH=/` (default):
+- No `<base>` tag is added
+- All relative paths resolve from the root
+
+## Rules for BASE_PATH Changes
+
+1. ✅ **ALWAYS** use relative paths (e.g., `./main.js`, not `/main.js`)
+2. ✅ **ALWAYS** test both root and subdirectory builds
+3. ✅ **ALWAYS** set BASE_PATH in GitHub Actions for GitHub Pages
+4. ❌ **NEVER** hardcode absolute paths in HTML or JavaScript
+5. ❌ **NEVER** remove the `<!-- BASE_PATH_PLACEHOLDER -->` comment
+6. ❌ **NEVER** manually add a `<base>` tag (let build.ts handle it)
+
+## Testing BASE_PATH
+
+```bash
+# Test root path build
+BASE_PATH=/ deno task build
+deno task serve:dist
+# Open http://localhost:8001
+
+# Test subdirectory build
+BASE_PATH=/testpath deno task build
+# Verify dist/index.html contains: <base href="/testpath/">
+
+# Run automated tests
+deno test --allow-all tests/e2e/base_path_build_test.ts
+```
+
+## Troubleshooting
+
+### Assets Not Loading (404 errors)
+- Check that `dist/index.html` has the correct `<base>` tag
+- Verify all paths in code are relative (start with `./`)
+- Ensure BASE_PATH was set during build
+
+### GitHub Pages Shows Blank Page
+- Verify BASE_PATH is set in `.github/workflows/deploy.yml`
+- Check browser console for 404 errors
+- Confirm the repository name matches the BASE_PATH value
+
+## Reference
+
+See [BASE_PATH_CONFIGURATION.md](mdc:BASE_PATH_CONFIGURATION.md) for complete documentation.
