@@ -37,8 +37,9 @@ pids
 .tmp/
 .cache/
 
-# WASM build artifacts
+# WASM build artifacts (from source builds - we keep pre-built WASM files)
 chia-wallet-sdk/target/
-*.wasm
-*.wasm.d.ts
-*_bg.wasm.d.ts
+# Note: *.wasm is NOT excluded because we need to deploy pre-built WASM files
+# *.wasm
+# *.wasm.d.ts
+# *_bg.wasm.d.ts
