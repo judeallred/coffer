@@ -5,6 +5,8 @@ export interface Offer {
   content: string;
   isValid: boolean;
   error?: string;
+  dexieData?: DexieOfferResponse;
+  dexieLoading?: boolean;
 }
 
 export interface LogEntry {

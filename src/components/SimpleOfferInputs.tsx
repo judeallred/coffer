@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Offer } from '../types/index.ts';
 import { extractOfferIdFromUrl, fetchOfferFromIdCached, isOfferId } from '../utils/offerUtils.ts';
+import { DexieOfferInfo } from './DexieOfferInfo.tsx';
 
 interface SimpleOfferInputsProps {
   offers: Offer[];
@@ -163,6 +164,13 @@ export function SimpleOfferInputs({
     return offer?.error || null;
   };
 
+  const getOfferByIndex = (index: number): Offer | undefined => {
+    const value = inputValues[index]?.trim();
+    if (!value) return undefined;
+
+    return offers.find((o) => o.content === value);
+  };
+
   return (
     <div className='simple-offer-inputs'>
       <div className='input-instructions'>
@@ -230,6 +238,13 @@ export function SimpleOfferInputs({
                 <div className='input-error'>
                   {error}
                 </div>
+              )}
+
+              {status === 'valid' && (
+                <DexieOfferInfo
+                  dexieData={getOfferByIndex(index)?.dexieData}
+                  loading={getOfferByIndex(index)?.dexieLoading}
+                />
               )}
             </div>
           );

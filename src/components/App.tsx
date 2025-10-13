@@ -5,7 +5,13 @@ import { SimpleCombinedOutput } from './SimpleCombinedOutput.tsx';
 import { ErrorLog } from './ErrorLog.tsx';
 import { About } from './About.tsx';
 import type { LogEntry, Offer } from '../types/index.ts';
-import { extractOfferIdFromUrl, fetchOfferFromIdCached, isOfferId } from '../utils/offerUtils.ts';
+import {
+  extractOfferIdFromUrl,
+  fetchDexieOfferDetails,
+  fetchOfferFromIdCached,
+  isOfferId,
+  offerStringToId,
+} from '../utils/offerUtils.ts';
 
 export function App(): JSX.Element {
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -83,12 +89,38 @@ export function App(): JSX.Element {
       content,
       isValid: validation.isValid,
       error: validation.error,
+      dexieLoading: validation.isValid, // Start loading if valid
     };
 
     setOffers((prev) => [...prev, newOffer]);
 
     if (!validation.isValid && validation.error) {
       logError(`Offer validation failed: ${validation.error}`, 'error');
+    }
+
+    // Fetch Dexie data if offer is valid
+    if (validation.isValid) {
+      try {
+        const offerId = await offerStringToId(content);
+        if (offerId) {
+          const dexieData = await fetchDexieOfferDetails(offerId);
+          setOffers((prev) =>
+            prev.map((offer) =>
+              offer.id === newId ? { ...offer, dexieData, dexieLoading: false } : offer
+            )
+          );
+        } else {
+          // Failed to convert offer to ID
+          setOffers((prev) =>
+            prev.map((offer) => offer.id === newId ? { ...offer, dexieLoading: false } : offer)
+          );
+        }
+      } catch (error) {
+        console.error('Failed to fetch Dexie data:', error);
+        setOffers((prev) =>
+          prev.map((offer) => offer.id === newId ? { ...offer, dexieLoading: false } : offer)
+        );
+      }
     }
   };
 
