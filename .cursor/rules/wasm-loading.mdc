@@ -77,14 +77,26 @@ if (wasmModule.initWasm) {
 }
 ```
 
+## GitHub Pages Configuration
+
+**Critical**: GitHub Pages uses Jekyll by default, which can filter or process files unexpectedly. The build script creates a `.nojekyll` file to disable Jekyll processing:
+
+```typescript
+await Deno.writeTextFile('./dist/.nojekyll', '');
+```
+
+This ensures all WASM files are served correctly without Jekyll interference.
+
 ## Rules for WASM Changes
 
 1. ❌ **NEVER** modify files in `src/wasm/` directory except for the custom loader
 2. ❌ **NEVER** remove the external declarations from `build.ts`
 3. ❌ **NEVER** try to bundle or inline WASM imports
-4. ✅ **ALWAYS** test both dev and production builds when changing WASM loading
-5. ✅ **ALWAYS** verify the browser console shows "WASM module initialized successfully"
-6. ✅ **ALWAYS** check that `dist/main.js` doesn't contain `import*as X from"./chia_wallet_sdk_wasm_bg.wasm"`
+4. ❌ **NEVER** remove the `.nojekyll` file creation from `build.ts`
+5. ✅ **ALWAYS** test both dev and production builds when changing WASM loading
+6. ✅ **ALWAYS** verify the browser console shows "WASM module initialized successfully"
+7. ✅ **ALWAYS** check that `dist/main.js` doesn't contain `import*as X from"./chia_wallet_sdk_wasm_bg.wasm"`
+8. ✅ **ALWAYS** verify `.nojekyll` exists in `dist/` after building
 
 ## Testing WASM Loading
 

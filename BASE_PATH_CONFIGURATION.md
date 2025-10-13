@@ -36,6 +36,11 @@ When you set `BASE_PATH`, the build process:
    - `./chia_wallet_sdk_wasm.js` → `/coffer/chia_wallet_sdk_wasm.js`
    - `./styles/global.css` → `/coffer/styles/global.css`
 
+3. **Creates `.nojekyll` file** (critical for GitHub Pages)
+   - Disables Jekyll processing which can cause 404 errors
+   - Ensures all WASM and asset files are served correctly
+   - Automatically created during every build
+
 ## Usage Examples
 
 ### Local Development

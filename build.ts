@@ -142,6 +142,15 @@ try {
   console.warn('  ⚠ Failed to copy WASM files:', error);
 }
 
+// Create .nojekyll file to disable Jekyll processing on GitHub Pages
+// This ensures all files are served correctly without Jekyll's file filtering
+try {
+  await Deno.writeTextFile('./dist/.nojekyll', '');
+  console.log('  ✓ Created .nojekyll for GitHub Pages');
+} catch (error) {
+  console.warn('  ⚠ Failed to create .nojekyll:', error);
+}
+
 console.log('✅ Build completed successfully!');
 console.log('📁 Output files in ./dist/');
 
