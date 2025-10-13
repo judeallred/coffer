@@ -1,5 +1,7 @@
 // Utility functions for Chia offer handling and validation
 
+import type { AssetItem, DexieOfferResponse, DexieOfferSummary, NFTItem } from '../types/index.ts';
+
 // Base58 encoding utilities
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
@@ -194,4 +196,133 @@ export async function fetchOfferFromIdCached(
  */
 export function clearOfferCache(): void {
   offerCache.clear();
+}
+
+/**
+ * Fetches offer details from Dexie API and returns simplified metadata
+ * @param offerId The 44-character offer ID
+ * @param timeoutMs Request timeout in milliseconds (default: 10000)
+ * @returns DexieOfferResponse with summary and raw response
+ */
+export async function fetchDexieOfferDetails(
+  offerId: string,
+  timeoutMs = 10000,
+): Promise<DexieOfferResponse> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(`https://api.dexie.space/v1/offers/${offerId}`, {
+      signal: controller.signal,
+    });
+
+    // Handle non-200 responses
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        success: false,
+        error: `HTTP ${response.status}: ${errorText || response.statusText}`,
+        rawResponse: { status: response.status, statusText: response.statusText },
+      };
+    }
+
+    const data = await response.json();
+
+    // Handle 200 response with success: false
+    if (!data.success) {
+      return {
+        success: false,
+        error: data.error_message || 'Unknown error from Dexie API',
+        rawResponse: data,
+      };
+    }
+
+    // Extract summary from successful response
+    const summary = extractOfferSummary(data);
+
+    return {
+      success: true,
+      summary,
+      rawResponse: data,
+    };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        success: false,
+        error: `Request timeout after ${timeoutMs}ms`,
+        rawResponse: null,
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      rawResponse: null,
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Extracts simplified summary from Dexie API response
+ * @param data The raw Dexie API response
+ * @returns DexieOfferSummary with offered and requested items
+ */
+function extractOfferSummary(data: any): DexieOfferSummary {
+  const offered: Array<NFTItem | AssetItem> = [];
+  const requested: Array<NFTItem | AssetItem> = [];
+
+  // Process offered items
+  if (data.offer?.offered && Array.isArray(data.offer.offered)) {
+    for (const item of data.offer.offered) {
+      if (item.is_nft) {
+        // NFT item
+        offered.push({
+          type: 'nft',
+          name: item.name || 'Unknown NFT',
+          collectionName: item.collection?.name || 'Unknown Collection',
+          thumbnail: item.preview?.medium || '',
+          royaltyPercent: item.nft_data?.royalty ? item.nft_data.royalty / 100 : 0,
+        });
+      } else {
+        // Regular asset
+        offered.push({
+          type: 'asset',
+          code: item.code || item.id || 'UNKNOWN',
+          amount: item.amount || 0,
+        });
+      }
+    }
+  }
+
+  // Process requested items
+  if (data.offer?.requested && Array.isArray(data.offer.requested)) {
+    for (const item of data.offer.requested) {
+      if (item.is_nft) {
+        // NFT item
+        requested.push({
+          type: 'nft',
+          name: item.name || 'Unknown NFT',
+          collectionName: item.collection?.name || 'Unknown Collection',
+          thumbnail: item.preview?.medium || '',
+          royaltyPercent: item.nft_data?.royalty ? item.nft_data.royalty / 100 : 0,
+        });
+      } else {
+        // Regular asset
+        requested.push({
+          type: 'asset',
+          code: item.code || item.id || 'UNKNOWN',
+          amount: item.amount || 0,
+        });
+      }
+    }
+  }
+
+  return {
+    offeredCount: offered.length,
+    requestedCount: requested.length,
+    offered,
+    requested,
+  };
 }
