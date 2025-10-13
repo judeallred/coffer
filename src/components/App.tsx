@@ -365,11 +365,6 @@ export function App(): JSX.Element {
       <Header />
       <main className='main-content'>
         <div className='simplified-content'>
-          {!isWasmInitialized && (
-            <div className='loading-notice'>
-              ⏳ Initializing WASM module... Please wait.
-            </div>
-          )}
           <SimpleOfferInputs
             offers={offers}
             onAddOffer={addOffer}
