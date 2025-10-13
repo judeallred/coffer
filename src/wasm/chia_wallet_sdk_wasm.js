@@ -1,18 +1,21 @@
 // Browser-compatible WASM loader for chia-wallet-sdk-wasm
-// This uses fetch() + WebAssembly.instantiate() to avoid MIME type issues
+// The npm package uses Node.js-style imports (import * as wasm from "./file.wasm")
+// which don't work in browsers. This is the standard browser approach using the
+// WebAssembly API directly.
 import * as wasm_bg from './chia_wallet_sdk_wasm_bg.js';
 
 let isInitialized = false;
 
-// Initialize the WASM module by fetching the .wasm file as ArrayBuffer
+// Initialize the WASM module using the standard WebAssembly API
+// See: https://developer.mozilla.org/en-US/docs/WebAssembly/Loading_and_running
 async function initWasm() {
   if (isInitialized) {
     return; // Already initialized
   }
 
   try {
-    // Fetch the WASM file as a raw binary (ArrayBuffer)
-    // This bypasses MIME type checking since we're not importing as a module
+    // Fetch the WASM file as raw binary (standard approach for browsers)
+    // Alternative: WebAssembly.instantiateStreaming(fetch(url)) for streaming compilation
     const wasmPath = './chia_wallet_sdk_wasm_bg.wasm';
     const wasmResponse = await fetch(wasmPath);
 
@@ -34,8 +37,8 @@ async function initWasm() {
       }
     }
 
-    // Use WebAssembly.instantiate() with ArrayBuffer
-    // This is the recommended way to load WASM without MIME type issues
+    // Instantiate the WASM module with the imports it needs
+    // This is the standard WebAssembly API - see WebAssembly.org documentation
     const wasmModuleInstance = await WebAssembly.instantiate(wasmArrayBuffer, imports);
 
     // Set up the WASM module
