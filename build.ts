@@ -35,20 +35,8 @@ const externalImportPlugin: esbuild.Plugin = {
     build.onResolve({ filter: /chia_wallet_sdk_wasm.*\.js$/ }, (args) => {
       return { path: args.path, external: true };
     });
-    // Handle image imports - transform to file paths
-    build.onResolve({ filter: /\.(png|jpg|jpeg|gif|svg|webp|ico)$/ }, (args) => {
-      // Keep the relative path structure (including assets/ directory)
-      if (args.path.startsWith('.')) {
-        // It's already a relative path like ../assets/file.svg
-        // Extract the path after src/ if present, otherwise use as-is
-        const match = args.path.match(/(?:\.\.\/)?(?:src\/)?(.+)/);
-        const relativePath = match ? match[1] : args.path;
-        return { path: `./${relativePath}`, external: true };
-      }
-      // Fallback to just filename for absolute paths
-      const filename = args.path.split('/').pop() || args.path;
-      return { path: `./${filename}`, external: true };
-    });
+    // Image imports are handled by esbuild's file loader - don't mark as external
+    // This prevents the "module script with MIME type image/svg+xml" error on GitHub Pages
   },
 };
 
@@ -68,7 +56,18 @@ const result = await esbuild.build({
   loader: {
     '.ts': 'ts',
     '.tsx': 'tsx',
+    // Use 'file' loader for images - copies to output and returns path as string
+    // This prevents "module script with MIME type image/svg+xml" error on GitHub Pages
+    '.png': 'file',
+    '.jpg': 'file',
+    '.jpeg': 'file',
+    '.gif': 'file',
+    '.svg': 'file',
+    '.webp': 'file',
+    '.ico': 'file',
   },
+  // Use relative paths for assets
+  assetNames: 'assets/[name]-[hash]',
 });
 
 if (result.errors.length > 0) {

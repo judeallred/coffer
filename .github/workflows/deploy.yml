@@ -76,3 +76,55 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  verify:
+    name: Verify Deployment
+    runs-on: ubuntu-latest
+    needs: deploy
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies (for Playwright)
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Wait for deployment to be ready
+        run: |
+          echo "Waiting 30 seconds for GitHub Pages to propagate..."
+          sleep 30
+
+      - name: Run e2e tests against GitHub Pages
+        run: deno test --allow-all tests/e2e/github_pages_test.ts --filter="GitHub Pages"
+        env:
+          GITHUB_PAGES_URL: https://judeallred.github.io/coffer/
+
+      - name: Report verification status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ GitHub Pages deployment verified successfully!"
+          else
+            echo "❌ GitHub Pages verification failed"
+            echo "The site may have issues - check the logs above"
+            exit 1
+          fi
