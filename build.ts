@@ -37,7 +37,15 @@ const externalImportPlugin: esbuild.Plugin = {
     });
     // Handle image imports - transform to file paths
     build.onResolve({ filter: /\.(png|jpg|jpeg|gif|svg|webp|ico)$/ }, (args) => {
-      // Convert relative import path to just the filename
+      // Keep the relative path structure (including assets/ directory)
+      if (args.path.startsWith('.')) {
+        // It's already a relative path like ../assets/file.svg
+        // Extract the path after src/ if present, otherwise use as-is
+        const match = args.path.match(/(?:\.\.\/)?(?:src\/)?(.+)/);
+        const relativePath = match ? match[1] : args.path;
+        return { path: `./${relativePath}`, external: true };
+      }
+      // Fallback to just filename for absolute paths
       const filename = args.path.split('/').pop() || args.path;
       return { path: `./${filename}`, external: true };
     });

@@ -10,6 +10,7 @@
 import { assert } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 import { chromium } from 'npm:playwright@1.45.0';
 import type { Browser, Page } from 'npm:playwright@1.45.0';
+import { killProcess, startFileServer } from './test_utils.ts';
 
 Deno.test({
   name: 'Performance Test: Detect render loops and performance issues',
@@ -18,23 +19,8 @@ Deno.test({
     let page: Page | null = null;
 
     // Start a simple static file server for the dist directory
-    const serverProcess = new Deno.Command('deno', {
-      args: [
-        'run',
-        '--allow-net',
-        '--allow-read',
-        'https://deno.land/std@0.208.0/http/file_server.ts',
-        '--port',
-        '8004',
-        'dist',
-      ],
-      cwd: Deno.cwd(),
-      stdout: 'piped',
-      stderr: 'piped',
-    }).spawn();
-
-    // Wait for the server to start
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Uses dynamic port allocation to avoid conflicts
+    const { process: serverProcess, url } = await startFileServer('dist', 8004);
 
     try {
       console.log('🚀 Launching browser for performance test...');
@@ -49,8 +35,8 @@ Deno.test({
           consoleMessages.push(msg.text());
         });
 
-        console.log('📄 Loading page...');
-        await page.goto('http://localhost:8004', {
+        console.log(`📄 Loading page at ${url}...`);
+        await page.goto(url, {
           waitUntil: 'domcontentloaded',
           timeout: 10000,
         });
@@ -155,7 +141,7 @@ Deno.test({
       console.log('🧹 Cleanup completed');
       if (page) await page.close();
       if (browser) await browser.close();
-      serverProcess.kill('SIGTERM');
+      await killProcess(serverProcess);
     }
   },
   sanitizeOps: false,

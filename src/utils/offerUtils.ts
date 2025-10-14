@@ -65,7 +65,9 @@ function convertBits(
   const result: number[] = [];
   const maxv = (1 << toBits) - 1;
 
-  for (const value of data) {
+  // Use index iteration to avoid iterator issues
+  for (let i = 0; i < data.length; i++) {
+    const value = data[i];
     acc = (acc << fromBits) | value;
     bits += fromBits;
     while (bits >= toBits) {
@@ -335,6 +337,8 @@ function parseOfferItems(items: DexieOfferItem[]): Array<NFTItem | AssetItem> {
         }
       } catch (error) {
         console.error('Failed to encode NFT ID:', item.id, error);
+        // Keep nftId as null - UI will handle missing link gracefully
+        // Future enhancement: Could add a flag to NFTItem to indicate encoding failure
       }
 
       try {
@@ -343,6 +347,7 @@ function parseOfferItems(items: DexieOfferItem[]): Array<NFTItem | AssetItem> {
         }
       } catch (error) {
         console.error('Failed to encode collection ID:', item.collection?.id, error);
+        // Keep collectionId as null - UI will display name without link
       }
 
       return {

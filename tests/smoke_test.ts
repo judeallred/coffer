@@ -1,6 +1,7 @@
 /// <reference lib="deno.ns" />
 import { assert } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 import { type Browser, chromium, type Page } from 'npm:playwright@1.45.0';
+import { killProcess, startFileServer } from './test_utils.ts';
 
 /**
  * Simple smoke test to verify the site loads without console errors
@@ -15,25 +16,8 @@ Deno.test({
     let page: Page | null = null;
 
     // Start a simple file server for the dist directory
-    const serverProcess = new Deno.Command('deno', {
-      args: [
-        'run',
-        '--allow-net',
-        '--allow-read',
-        'https://deno.land/std@0.208.0/http/file_server.ts',
-        '--port',
-        '8002',
-        'dist',
-      ],
-      cwd: Deno.cwd(),
-      stdout: 'piped',
-      stderr: 'piped',
-    });
-
-    const server = serverProcess.spawn();
-
-    // Wait for server to start
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Uses dynamic port allocation to avoid conflicts
+    const { process: server, url } = await startFileServer('dist', 8002);
 
     try {
       // Launch Playwright browser
@@ -89,8 +73,8 @@ Deno.test({
 
       await t.step('Page should load successfully', async () => {
         assert(page !== null, 'Page should be initialized');
-        console.log('📄 Loading page...');
-        const response = await page.goto('http://localhost:8002', {
+        console.log(`📄 Loading page at ${url}...`);
+        const response = await page.goto(url, {
           waitUntil: 'domcontentloaded',
           timeout: 10000,
         });
@@ -234,8 +218,7 @@ Deno.test({
       if (browser) await browser.close();
 
       // Kill the file server
-      server.kill('SIGTERM');
-      await server.status;
+      await killProcess(server);
 
       console.log('🧹 Cleanup completed');
     }
