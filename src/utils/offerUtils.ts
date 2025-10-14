@@ -187,26 +187,36 @@ export async function offerStringToId(offerString: string): Promise<string | nul
 }
 
 /**
- * Checks if a string is a 44-character base64 offer ID
+ * Checks if a string is a 43-44 character base64 offer ID
  * @param value The string to check
  * @returns True if the value is a valid offer ID format
+ * @note Offer IDs are typically 44 characters, but can be 43 when they would
+ *       have a leading '1' in Base58 encoding (representing a leading zero byte)
  */
 export function isOfferId(value: string): boolean {
-  return value.length === 44 && !value.startsWith('offer1') && /^[A-Za-z0-9+/]+$/.test(value);
+  const length = value.length;
+  return (length === 43 || length === 44) &&
+    !value.startsWith('offer1') &&
+    /^[A-Za-z0-9+/]+$/.test(value);
 }
 
 /**
  * Extracts offer ID from MintGarden or Dexie URL
  * @param url The URL to parse
  * @returns The extracted offer ID or null if not found
+ * @note Handles URLs with optional @ prefix and trailing slashes
  */
 export function extractOfferIdFromUrl(url: string): string | null {
   try {
+    // Strip @ prefix if present (some apps/browsers add this when copying)
+    const cleanedUrl = url.replace(/^@/, '').replace(/\/$/, ''); // Also strip trailing slash
+
     // Match URLs like:
     // https://mintgarden.io/offers/AqtaxKUF7UV4WKAYGr24frVMzt6xWWahTc4Xwc8EmhiK
-    // https://dexie.space/offers/AqtaxKUF7UV4WKAYGr24frVMzt6xWWahTc4Xwc8EmhiK
-    const urlPattern = /^https?:\/\/(mintgarden\.io|dexie\.space)\/offers\/([A-Za-z0-9+/]{44})$/;
-    const match = url.match(urlPattern);
+    // https://dexie.space/offers/5GVuRrfcx7311tW2JpDxR9eAPnxibEb7nAU4kRdbj72
+    // Accepts 43-44 character offer IDs (43 chars for IDs with leading zero bytes)
+    const urlPattern = /^https?:\/\/(mintgarden\.io|dexie\.space)\/offers\/([A-Za-z0-9+/]{43,44})$/;
+    const match = cleanedUrl.match(urlPattern);
 
     if (match && match[2]) {
       return match[2];
@@ -220,7 +230,7 @@ export function extractOfferIdFromUrl(url: string): string | null {
 
 /**
  * Fetches full offer string from offer ID using Dexie and MintGarden APIs
- * @param offerId The 44-character offer ID
+ * @param offerId The 43-44 character offer ID
  * @param timeoutMs Request timeout in milliseconds (default: 10000)
  * @returns The full offer string or null if fetch fails
  */
@@ -276,7 +286,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Fetches offer from ID with caching support
- * @param offerId The 44-character offer ID
+ * @param offerId The 43-44 character offer ID
  * @param timeoutMs Request timeout in milliseconds (default: 10000)
  * @returns The full offer string or null if fetch fails
  */
@@ -388,7 +398,7 @@ function extractOfferSummary(data: DexieApiResponse): DexieOfferSummary {
 /**
  * Fetches offer details from Dexie API and returns simplified metadata
  *
- * @param offerId The 44-character Base58-encoded offer ID
+ * @param offerId The 43-44 character Base58-encoded offer ID
  * @param timeoutMs Request timeout in milliseconds (default: 10000)
  * @returns DexieOfferResponse with:
  *   - success: boolean indicating if the request succeeded
@@ -420,10 +430,10 @@ export async function fetchDexieOfferDetails(
   timeoutMs = 10000,
 ): Promise<DexieOfferResponse> {
   // Validate offer ID format
-  if (!offerId || offerId.length !== 44) {
+  if (!offerId || (offerId.length !== 43 && offerId.length !== 44)) {
     return {
       success: false,
-      error: 'Invalid offer ID format (expected 44-character Base58 string)',
+      error: 'Invalid offer ID format (expected 43-44 character Base58 string)',
       rawResponse: null,
     };
   }
