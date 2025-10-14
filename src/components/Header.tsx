@@ -67,11 +67,7 @@ export function Header(): JSX.Element {
           </div>
         </div>
         {showInstallButton && (
-          <button
-            className='install-app-button'
-            onClick={handleInstallClick}
-            type='button'
-          >
+          <button className='install-app-button' onClick={handleInstallClick} type='button'>
             📲 Install App
           </button>
         )}

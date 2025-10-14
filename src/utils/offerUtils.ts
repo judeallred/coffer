@@ -24,7 +24,7 @@ function bech32Polymod(values: number[]): number {
   let chk = 1;
   for (const value of values) {
     const top = chk >> 25;
-    chk = (chk & 0x1ffffff) << 5 ^ value;
+    chk = ((chk & 0x1ffffff) << 5) ^ value;
     for (let i = 0; i < 5; i++) {
       if ((top >> i) & 1) {
         chk ^= GEN[i];
@@ -78,7 +78,7 @@ function convertBits(
     if (bits > 0) {
       result.push((acc << (toBits - bits)) & maxv);
     }
-  } else if (bits >= fromBits || ((acc << (toBits - bits)) & maxv)) {
+  } else if (bits >= fromBits || (acc << (toBits - bits)) & maxv) {
     return null;
   }
 
@@ -222,10 +222,7 @@ export function extractOfferIdFromUrl(url: string): string | null {
  * @param timeoutMs Request timeout in milliseconds (default: 10000)
  * @returns The full offer string or null if fetch fails
  */
-export async function fetchOfferFromId(
-  offerId: string,
-  timeoutMs = 10000,
-): Promise<string | null> {
+export async function fetchOfferFromId(offerId: string, timeoutMs = 10000): Promise<string | null> {
   // Create abort controller for timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -248,12 +245,9 @@ export async function fetchOfferFromId(
 
     // Try MintGarden API as fallback
     try {
-      const mintgardenResponse = await fetch(
-        `https://api.mintgarden.io/offers/${offerId}/bech32`,
-        {
-          signal: controller.signal,
-        },
-      );
+      const mintgardenResponse = await fetch(`https://api.mintgarden.io/offers/${offerId}/bech32`, {
+        signal: controller.signal,
+      });
       if (mintgardenResponse.ok) {
         const offerString = await mintgardenResponse.text();
         // Remove quotes if present
@@ -290,7 +284,7 @@ export async function fetchOfferFromIdCached(
 ): Promise<string | null> {
   // Check cache first
   const cached = offerCache.get(offerId);
-  if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.offer;
   }
 
@@ -330,7 +324,7 @@ export function clearDexieOfferCache(): void {
  */
 function parseOfferItems(items: DexieOfferItem[]): Array<NFTItem | AssetItem> {
   return items.map((item) => {
-    if (item.is_nft) {
+    if (item['is_nft']) {
       // Convert hex IDs to bech32m format for MintGarden URLs
       let nftId: string | null = null;
       let collectionId: string | null = null;
@@ -358,7 +352,7 @@ function parseOfferItems(items: DexieOfferItem[]): Array<NFTItem | AssetItem> {
         collectionName: item.collection?.name || 'Unknown Collection',
         collectionId,
         thumbnail: item.preview?.medium || null,
-        royaltyPercent: item.nft_data?.royalty ? item.nft_data.royalty / 100 : 0,
+        royaltyPercent: item['nft_data']?.royalty ? item['nft_data'].royalty / 100 : 0,
       };
     }
     return {
@@ -431,7 +425,7 @@ export async function fetchDexieOfferDetails(
 
   // Check cache first
   const cached = dexieOfferCache.get(offerId);
-  if (cached && (Date.now() - cached.timestamp) < DEXIE_CACHE_TTL_MS) {
+  if (cached && Date.now() - cached.timestamp < DEXIE_CACHE_TTL_MS) {
     return cached.data;
   }
 
@@ -470,7 +464,7 @@ export async function fetchDexieOfferDetails(
     if (!data.success) {
       const errorResponse: DexieOfferResponse = {
         success: false,
-        error: data.error_message || 'Unknown error from Dexie API',
+        error: data['error_message'] || 'Unknown error from Dexie API',
         rawResponse: data,
       };
       return errorResponse;

@@ -10,8 +10,6 @@
       "no-implicit-declare-namespace",
       "prefer-const"
     ],
-    "exclude": [
-      "no-undef"
-    ]
+    "exclude": ["no-undef"]
   }
 }

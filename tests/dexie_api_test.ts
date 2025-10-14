@@ -65,10 +65,7 @@ Deno.test('Dexie API - successful response with NFTs', async () => {
     assertExists(firstNFT.collectionName);
     assertEquals(firstNFT.collectionName, 'DataLayer Minions');
     // Thumbnail can be string or null
-    assertEquals(
-      typeof firstNFT.thumbnail === 'string' || firstNFT.thumbnail === null,
-      true,
-    );
+    assertEquals(typeof firstNFT.thumbnail === 'string' || firstNFT.thumbnail === null, true);
     assertEquals(typeof firstNFT.royaltyPercent, 'number');
     // Royalty is 500 basis points = 5%
     assertEquals(firstNFT.royaltyPercent, 5);
@@ -184,10 +181,7 @@ Deno.test('Dexie API - NFT without collection name uses default', async () => {
         // Should have a collection name (even if it's "Unknown Collection")
         assertExists(item.collectionName);
         // Thumbnail can be string or null
-        assertEquals(
-          typeof item.thumbnail === 'string' || item.thumbnail === null,
-          true,
-        );
+        assertEquals(typeof item.thumbnail === 'string' || item.thumbnail === null, true);
         // Royalty should be a number (0 if missing)
         assertEquals(typeof item.royaltyPercent, 'number');
       }

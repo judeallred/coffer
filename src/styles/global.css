@@ -240,7 +240,8 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -854,6 +855,48 @@ body {
   text-align: center;
 }
 
+/* QR Code Section */
+.qr-code-section {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: rgba(0, 255, 0, 0.05);
+  border: 1px solid rgba(0, 255, 0, 0.2);
+  border-radius: var(--radius-md);
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
+}
+
+.qr-code-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-md) 0;
+  text-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+}
+
+.qr-code-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: var(--spacing-md) 0;
+}
+
+.qr-code-canvas {
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+  background: var(--color-background);
+  max-width: 100%;
+  height: auto;
+}
+
+.qr-code-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-light);
+  margin: var(--spacing-md) 0 0 0;
+  text-align: center;
+}
+
 /* Responsive Design for Simplified UI */
 @media (max-width: 767px) {
   .header-content {
@@ -921,6 +964,14 @@ body {
   .copy-button {
     align-self: center;
   }
+
+  .qr-code-section {
+    padding: var(--spacing-md);
+  }
+
+  .qr-code-canvas {
+    max-width: 200px;
+  }
 }
 
 /* About Section */
@@ -980,8 +1031,8 @@ body {
 }
 
 .legal-disclaimer-text {
-  font-size: 0.6875rem;
-  line-height: 1.6;
+  font-size: 0.625rem;
+  line-height: 1.5;
   color: rgba(0, 204, 0, 0.7);
   margin: 0;
   text-align: left;
@@ -1088,12 +1139,7 @@ body {
 
 .about-divider {
   height: 1px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(0, 255, 0, 0.3),
-    transparent
-  );
+  background: linear-gradient(to right, transparent, rgba(0, 255, 0, 0.3), transparent);
   margin: var(--spacing-2xl) 0;
 }
 
@@ -1154,15 +1200,13 @@ body {
 .qr-code-container {
   display: flex;
   justify-content: center;
+  align-items: center;
   margin-top: var(--spacing-md);
 }
 
-.qr-code {
+.tip-jar .qr-code-canvas {
   width: 200px;
   height: 200px;
-  border-radius: var(--radius-md);
-  border: 2px solid var(--color-border);
-  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
 }
 
 @media (max-width: 768px) {
@@ -1201,7 +1245,7 @@ body {
     font-size: 0.65rem;
   }
 
-  .qr-code {
+  .tip-jar .qr-code-canvas {
     width: 150px;
     height: 150px;
   }

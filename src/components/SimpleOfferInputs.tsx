@@ -177,10 +177,8 @@ export function SimpleOfferInputs({
         <div className='instructions-header'>
           <div className='instructions-text'>
             <h3>Paste Chia offers below</h3>
-            <p>
-              You can paste offers, offer ids, or dexie/MintGarden offer page urls.
-            </p>
-            <p>Each offer will be automatically validated and combined</p>
+            <p>You can paste offers, offer ids, or dexie/MintGarden offer page urls.</p>
+            <p>Each offer will be automatically parsed and combined</p>
           </div>
           {offers.length > 0 && (
             <div className='reset-button-container'>
@@ -234,11 +232,7 @@ export function SimpleOfferInputs({
                 </button>
               </div>
 
-              {error && (
-                <div className='input-error'>
-                  {error}
-                </div>
-              )}
+              {error && <div className='input-error'>{error}</div>}
 
               {status === 'valid' && (
                 <DexieOfferInfo

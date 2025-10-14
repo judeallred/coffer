@@ -5,6 +5,20 @@ export function About(): JSX.Element {
     <section className='about-section'>
       <div className='about-content'>
         <div className='about-info-section'>
+          <h2 className='about-heading'>What is Coffer?</h2>
+          <p className='about-text'>
+            Coffer is a free Chia offer combinator that lets you merge multiple blockchain offers
+            into a single atomic transaction. This Chia offer merger tool consolidates offers from
+            marketplaces like dexie and MintGarden or peer-to-peer trades, letting you batch offers
+            together and aggregate offers from different sources. Perfect for combining multiple NFT
+            offers or executing batch cryptocurrency trades as one combined offer. Coffer exists in
+            service to the Chia community and{' '}
+            <strong>does not bundle any fees or other shenanigans</strong>{' '}
+            into the combined offer output.
+          </p>
+        </div>
+
+        <div className='about-info-section'>
           <h2 className='about-heading'>What are Chia Offers?</h2>
           <p className='about-text'>
             Chia offers are peer-to-peer, trustless trades on the Chia blockchain. They allow you to
@@ -169,15 +183,12 @@ export function About(): JSX.Element {
         <div className='legal-disclaimer-box'>
           <p className='legal-disclaimer-text'>
             <strong>Legal Disclaimer:</strong>{' '}
-            This platform provides a tool for combining Chia blockchain offers submitted by users.
-            We do not operate as a regulated financial service provider, broker, or exchange under
-            any framework. We do not endorse, verify, or guarantee the validity, legality, or safety
-            of any offer or transaction. All offers are user-generated and processed
-            cryptographically without our involvement. Blockchain transactions carry inherent
-            financial and technical risks and may be subject to regulatory restrictions in your
-            jurisdiction. By using this tool, you acknowledge and accept full responsibility for all
-            transactions and waive any claims against the platform operators. Use at your own risk.
-            Nothing on this site constitutes trading advice.
+            This tool combines user-submitted blockchain offers. We are not a regulated financial
+            service provider under any framework. We do not endorse, verify, or guarantee any offer
+            or transaction. All offers are user-generated and processed without our involvement.
+            Transactions carry financial and technical risks and may be subject to regulatory
+            restrictions. By using this tool, you accept full responsibility and waive all claims
+            against the operators. Use at your own risk. Not trading advice.
           </p>
         </div>
       </div>

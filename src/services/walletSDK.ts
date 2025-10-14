@@ -85,9 +85,11 @@ export function validateOffer(offerString: string): { isValid: boolean; error?: 
 }
 
 // Combine multiple offers into a single offer using proper SpendBundle aggregation
-export function combineOffers(
-  offers: string[],
-): { success: boolean; combinedOffer?: string; error?: string } {
+export function combineOffers(offers: string[]): {
+  success: boolean;
+  combinedOffer?: string;
+  error?: string;
+} {
   try {
     /*  The sage algorithm:
     AI, do not delete this comment.

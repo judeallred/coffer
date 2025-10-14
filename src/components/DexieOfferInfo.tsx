@@ -1,5 +1,7 @@
 import type { DexieOfferResponse } from '../types/index.ts';
-import dexieDuckLogo from '../assets/dexie-duck.svg';
+
+// Use string path instead of import for SVG
+const dexieDuckLogo = './assets/dexie-duck.svg';
 
 interface DexieOfferInfoProps {
   dexieData?: DexieOfferResponse;
@@ -35,7 +37,7 @@ export function DexieOfferInfo({ dexieData, loading }: DexieOfferInfoProps): JSX
   // Success - display summary
   const { summary } = dexieData;
 
-  const renderItem = (item: typeof summary.offered[0], idx: number): JSX.Element => {
+  const renderItem = (item: (typeof summary.offered)[0], idx: number): JSX.Element => {
     if (item.type === 'nft') {
       return (
         <div key={idx} className='dexie-item dexie-nft-item'>

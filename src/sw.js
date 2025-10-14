@@ -16,7 +16,8 @@ const urlsToCache = [
 // Install event - cache essential resources
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches
+      .open(CACHE_NAME)
       .then((cache) => {
         console.log('Service Worker: Caching essential files');
         return cache.addAll(urlsToCache);
@@ -63,20 +64,19 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => {
         // Network failed, try cache
-        return caches.match(event.request)
-          .then((response) => {
-            if (response) {
-              return response;
-            }
-            // Return a fallback response if needed
-            return new Response('Offline - resource not available', {
-              status: 503,
-              statusText: 'Service Unavailable',
-              headers: new Headers({
-                'Content-Type': 'text/plain',
-              }),
-            });
+        return caches.match(event.request).then((response) => {
+          if (response) {
+            return response;
+          }
+          // Return a fallback response if needed
+          return new Response('Offline - resource not available', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: new Headers({
+              'Content-Type': 'text/plain',
+            }),
           });
+        });
       }),
   );
 });

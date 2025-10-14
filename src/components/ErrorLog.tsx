@@ -46,9 +46,11 @@ function formatTimestamp(timestamp: Date): string {
 /**
  * ErrorLog component displays application logs in an expandable panel
  */
-export function ErrorLog(
-  { logs, isDebugMode = false, onClearLogs }: ErrorLogProps,
-): JSX.Element | null {
+export function ErrorLog({
+  logs,
+  isDebugMode = false,
+  onClearLogs,
+}: ErrorLogProps): JSX.Element | null {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const hasLogs = logs.length > 0;
@@ -71,11 +73,7 @@ export function ErrorLog(
 
   return (
     <div className={`error-log-container ${hasLogs ? 'visible' : ''}`}>
-      <button
-        className='error-log-header'
-        onClick={() => setIsExpanded(!isExpanded)}
-        type='button'
-      >
+      <button className='error-log-header' onClick={() => setIsExpanded(!isExpanded)} type='button'>
         <div className='error-log-header-left'>
           <div className={`error-log-status-indicator ${mostSevereType}`} />
           <span className='error-log-title'>Application Log</span>
@@ -83,11 +81,7 @@ export function ErrorLog(
         </div>
         <div className='error-log-header-right'>
           {hasLogs && onClearLogs && (
-            <button
-              className='error-log-clear-button'
-              onClick={handleClearClick}
-              type='button'
-            >
+            <button className='error-log-clear-button' onClick={handleClearClick} type='button'>
               Clear
             </button>
           )}

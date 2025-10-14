@@ -45,10 +45,7 @@ async function verifyBuildArtifacts(basePath: string): Promise<void> {
     console.log(`   ✅ Base tag found: <base href="${normalizedPath}">`);
   } else {
     // For root path, there should be no base tag
-    assert(
-      !html.includes('<base href='),
-      'HTML should not contain base tag for root path',
-    );
+    assert(!html.includes('<base href='), 'HTML should not contain base tag for root path');
     console.log('   ✅ No base tag for root path (correct)');
   }
 
@@ -74,10 +71,7 @@ async function verifyBuildArtifacts(basePath: string): Promise<void> {
   console.log('   ✅ All essential files present');
 
   // Verify HTML contains import map
-  assert(
-    html.includes('type="importmap"'),
-    'HTML should contain import map',
-  );
+  assert(html.includes('type="importmap"'), 'HTML should contain import map');
   assert(
     html.includes('"chia-wallet-sdk-wasm": "./chia_wallet_sdk_wasm.js"'),
     'Import map should map chia-wallet-sdk-wasm correctly',
@@ -85,10 +79,7 @@ async function verifyBuildArtifacts(basePath: string): Promise<void> {
   console.log('   ✅ Import map present and correct');
 
   // Verify HTML references main.js
-  assert(
-    html.includes('src="./main.js"'),
-    'HTML should reference main.js',
-  );
+  assert(html.includes('src="./main.js"'), 'HTML should reference main.js');
   console.log('   ✅ main.js reference found');
 
   // Verify WASM files are not bundled in main.js

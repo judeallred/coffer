@@ -1,4 +1,5 @@
 // Core type definitions for Coffer
+// deno-lint-ignore-file camelcase
 
 export interface Offer {
   id: string;
@@ -50,7 +51,7 @@ export interface DexieOfferResponse {
 
 // Raw Dexie API response structure
 export interface DexieOfferItem {
-  'is_nft'?: boolean;
+  is_nft?: boolean;
   name?: string;
   code?: string;
   id?: string;
@@ -65,18 +66,18 @@ export interface DexieOfferItem {
     tiny?: string;
     medium?: string;
   };
-  'nft_data'?: {
+  nft_data?: {
     royalty?: number;
-    'data_uris'?: string[];
-    'metadata_uris'?: string[];
-    'data_hash'?: string;
-    'metadata_hash'?: string;
+    data_uris?: string[];
+    metadata_uris?: string[];
+    data_hash?: string;
+    metadata_hash?: string;
   };
 }
 
 export interface DexieApiResponse {
   success: boolean;
-  'error_message'?: string;
+  error_message?: string;
   offer?: {
     id?: string;
     status?: number;
@@ -85,8 +86,8 @@ export interface DexieApiResponse {
     requested?: DexieOfferItem[];
     price?: number;
     fees?: number;
-    'date_found'?: string;
-    'date_completed'?: string | null;
-    'date_pending'?: string | null;
+    date_found?: string;
+    date_completed?: string | null;
+    date_pending?: string | null;
   };
 }
