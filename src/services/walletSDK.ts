@@ -2,6 +2,8 @@
 // We use the official npm package's TypeScript definitions (chia_wallet_sdk_wasm.d.ts)
 // and extend them with our custom loader's exports
 
+import { CoinSpend, Signature, SpendBundle } from 'chia-wallet-sdk-wasm';
+
 // Type for the WASM module - combines official types with our custom loader exports
 type WasmModule = typeof import('chia-wallet-sdk-wasm') & {
   // Our custom loader adds these init functions
@@ -133,9 +135,8 @@ export function combineOffers(offers: string[]): {
       );
 
       // Parse all offers to SpendBundles
-      const spendBundles = [];
-      for (let i = 0; i < validOffers.length; i++) {
-        const offerString = validOffers[i];
+      const spendBundles: SpendBundle[] = [];
+      for (const [i, offerString] of validOffers.entries()) {
         console.log(`📄 Parsing offer ${i + 1}/${validOffers.length}...`);
 
         const spendBundle = wasmModule.decodeOffer(offerString.trim());
@@ -152,17 +153,23 @@ export function combineOffers(offers: string[]): {
       // Implement proper SpendBundle aggregation following Chia blockchain standards:
 
       // 1. Collect all coin spends from all offers
-      const allCoinSpends = [];
-      const allSignatures = [];
 
-      for (let i = 0; i < spendBundles.length; i++) {
-        const bundle = spendBundles[i];
+      const requestedCoinSpends: CoinSpend[] = [];
+      const offeredCoinSpends: CoinSpend[] = [];
+      const allSignatures: Signature[] = [];
+      const offeredCoinSpendParentInfo = new Uint8Array(32); // 0x0
+
+      for (const [i, bundle] of spendBundles.entries()) {
         console.log(`🔍 Processing SpendBundle ${i + 1}...`);
 
         // Add all coin spends from this bundle
         if (bundle.coinSpends && Array.isArray(bundle.coinSpends)) {
           for (const coinSpend of bundle.coinSpends) {
-            allCoinSpends.push(coinSpend);
+            if (coinSpend.coin.parentCoinInfo === offeredCoinSpendParentInfo) {
+              requestedCoinSpends.push(coinSpend);
+            } else {
+              offeredCoinSpends.push(coinSpend);
+            }
           }
         }
 
@@ -178,7 +185,11 @@ export function combineOffers(offers: string[]): {
         );
       }
 
-      console.log(`📊 Total coin spends to combine: ${allCoinSpends.length}`);
+      console.log(
+        `📊 Total coin spends to combine: ${requestedCoinSpends.length + offeredCoinSpends.length}`,
+      );
+      console.log(`📊 Total requested coin spends: ${requestedCoinSpends.length}`);
+      console.log(`📊 Total offered coin spends: ${offeredCoinSpends.length}`);
       console.log(`📊 Total signatures to aggregate: ${allSignatures.length}`);
 
       // 2. Aggregate all signatures using BLS signature aggregation
@@ -197,8 +208,16 @@ export function combineOffers(offers: string[]): {
       }
 
       // 3. Create the combined SpendBundle
-      const combinedSpendBundle = new wasmModule.SpendBundle(allCoinSpends, combinedSignature);
-      console.log(`✅ Created combined SpendBundle with ${allCoinSpends.length} coin spends`);
+      // We group the requested spends ahead of the offered spends by convention for ecosystem compatibility.
+      const combinedSpendBundle = new wasmModule.SpendBundle([
+        ...requestedCoinSpends,
+        ...offeredCoinSpends,
+      ], combinedSignature);
+      console.log(
+        `✅ Created combined SpendBundle with ${
+          requestedCoinSpends.length + offeredCoinSpends.length
+        } coin spends`,
+      );
 
       // 4. Encode back to offer string
       const combinedOffer = wasmModule.encodeOffer(combinedSpendBundle);
