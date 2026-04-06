@@ -6,7 +6,8 @@
     "npm:chia-wallet-sdk-wasm@0.29": "0.29.0",
     "npm:esbuild@~0.19.12": "0.19.12",
     "npm:husky@^9.1.7": "9.1.7",
-    "npm:playwright@^1.45.0": "1.56.0"
+    "npm:playwright@^1.45.0": "1.56.0",
+    "npm:preact@10.19.2": "10.19.2"
   },
   "jsr": {
     "@std/assert@0.218.2": {
@@ -190,6 +191,9 @@
         "fsevents"
       ],
       "bin": true
+    },
+    "preact@10.19.2": {
+      "integrity": "sha512-UA9DX/OJwv6YwP9Vn7Ti/vF80XL+YA5H2l7BpCtUr3ya8LWHFzpiO5R+N7dN16ujpIxhekRFuOOF82bXX7K/lg=="
     }
   },
   "remote": {
@@ -265,14 +269,13 @@
     "https://deno.land/std@0.208.0/path/windows/resolve.ts": "5ff441ab18a2346abadf778121128ee71bda4d0898513d4639a6ca04edca366b",
     "https://deno.land/std@0.208.0/streams/byte_slice_stream.ts": "c46d7c74836fc8c1a9acd9fe211cbe1bbaaee1b36087c834fb03af4991135c3a",
     "https://deno.land/std@0.208.0/testing/asserts.ts": "605bbd2ef0695e2a4324d810c4ad22e56041d51afb9584fc0b4e81084b14b1d6",
-    "https://deno.land/std@0.208.0/version.ts": "a3207ea06bba42f09c7c7ab46590b202c98366f26d2ae31622a4839257dbc790",
-    "https://esm.sh/preact@10.19.2": "a54c21042d5aace76ae26ab8870375502c2fda726204221068dbc1fb385b3d4b",
-    "https://esm.sh/preact@10.19.2/denonext/preact.mjs": "21041a67baec6418eab84df650925bf461355388cc901370580312bbf9fbb4bf"
+    "https://deno.land/std@0.208.0/version.ts": "a3207ea06bba42f09c7c7ab46590b202c98366f26d2ae31622a4839257dbc790"
   },
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@~0.218.2",
-      "npm:chia-wallet-sdk-wasm@0.29"
+      "npm:chia-wallet-sdk-wasm@0.29",
+      "npm:preact@10.19.2"
     ],
     "packageJson": {
       "dependencies": [
