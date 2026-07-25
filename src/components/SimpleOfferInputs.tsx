@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Offer } from '../types/index.ts';
-import { extractOfferIdFromUrl, fetchOfferFromIdCached, isOfferId } from '../utils/offerUtils.ts';
+import {
+  extractOfferIdFromUrl,
+  fetchOfferFromIdCached,
+  isOfferId,
+  splitOfferInput,
+} from '../utils/offerUtils.ts';
 import { DexieOfferInfo } from './DexieOfferInfo.tsx';
 
 interface SimpleOfferInputsProps {
@@ -80,13 +85,48 @@ export function SimpleOfferInputs({
     }
   };
 
+  // Resolves a raw pasted segment (offer string, offer ID, or offer URL) to a
+  // full offer string, fetching from Dexie/MintGarden when it's an ID or URL.
+  const resolveOfferToken = async (raw: string): Promise<string> => {
+    const offerIdFromUrl = extractOfferIdFromUrl(raw);
+    const offerIdToFetch = offerIdFromUrl || (isOfferId(raw) ? raw : null);
+
+    if (offerIdToFetch) {
+      const fetchedOffer = await fetchOfferFromIdCached(offerIdToFetch);
+      if (fetchedOffer) {
+        return fetchedOffer;
+      }
+    }
+
+    return raw;
+  };
+
   const handlePaste = async (index: number, e: ClipboardEvent) => {
     e.preventDefault();
 
     const pastedText = e.clipboardData?.getData('text') || '';
-    const trimmedValue = pastedText.trim();
+    const segments = splitOfferInput(pastedText);
 
-    if (!trimmedValue) return;
+    if (segments.length === 0) return;
+
+    // Multiple delimited offers: process each as its own row.
+    if (segments.length > 1) {
+      for (const segment of segments) {
+        try {
+          const offerToAdd = await resolveOfferToken(segment);
+
+          // Skip offers that already exist (best-effort against the current snapshot).
+          if (offers.some((o) => o.content === offerToAdd)) continue;
+
+          await onAddOffer(offerToAdd);
+        } catch (error) {
+          console.error('Failed to process pasted offer:', error);
+        }
+      }
+      return;
+    }
+
+    const trimmedValue = segments[0];
 
     // Update input value
     setInputValues((prev) => {
@@ -96,23 +136,15 @@ export function SimpleOfferInputs({
     });
 
     try {
-      let offerToAdd = trimmedValue;
+      const offerToAdd = await resolveOfferToken(trimmedValue);
 
-      // Check if it's a URL with an offer ID
-      const offerIdFromUrl = extractOfferIdFromUrl(trimmedValue);
-      const offerIdToFetch = offerIdFromUrl || (isOfferId(trimmedValue) ? trimmedValue : null);
-
-      // Check if it's an offer ID or URL and fetch it
-      if (offerIdToFetch) {
-        const fetchedOffer = await fetchOfferFromIdCached(offerIdToFetch);
-        if (fetchedOffer) {
-          offerToAdd = fetchedOffer;
-          setInputValues((prev) => {
-            const newValues = [...prev];
-            newValues[index] = fetchedOffer;
-            return newValues;
-          });
-        }
+      // Reflect a fetched offer string in the field.
+      if (offerToAdd !== trimmedValue) {
+        setInputValues((prev) => {
+          const newValues = [...prev];
+          newValues[index] = offerToAdd;
+          return newValues;
+        });
       }
 
       // Check if this offer was already added (to avoid duplicate processing)
@@ -178,6 +210,10 @@ export function SimpleOfferInputs({
           <div className='instructions-text'>
             <h3>Paste Chia offers below</h3>
             <p>You can paste offers, offer ids, or dexie/MintGarden offer page urls.</p>
+            <p>
+              Paste several at once (separated by commas or spaces) and they'll be split into
+              separate offers automatically.
+            </p>
             <p>Each offer will be automatically parsed and combined</p>
           </div>
           {offers.length > 0 && (

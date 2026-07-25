@@ -11,6 +11,7 @@ import {
   fetchOfferFromIdCached,
   isOfferId,
   offerStringToId,
+  splitOfferInput,
 } from '../utils/offerUtils.ts';
 
 export function App(): JSX.Element {
@@ -313,23 +314,31 @@ export function App(): JSX.Element {
         }
 
         const clipboardData = e.clipboardData?.getData('text') || '';
-        let content = clipboardData.trim();
 
-        if (!content) return;
+        // Split into segments so comma-/whitespace-delimited batches are handled.
+        const segments = splitOfferInput(clipboardData);
 
-        // Check if it's a URL with an offer ID
-        const offerIdFromUrl = extractOfferIdFromUrl(content);
+        if (segments.length === 0) return;
 
-        // Check if it's an offer string, offer ID, or URL
-        const isOffer = content.startsWith('offer1');
-        const isPotentialOfferId = isOfferId(content) || offerIdFromUrl !== null;
+        // Only intercept the paste when every segment looks like an offer,
+        // offer ID, or offer URL. Otherwise leave the clipboard content alone.
+        const isOfferLike = (token: string): boolean =>
+          token.startsWith('offer1') || isOfferId(token) || extractOfferIdFromUrl(token) !== null;
 
-        if (isOffer || isPotentialOfferId) {
-          e.preventDefault(); // Prevent default paste behavior
+        if (!segments.every(isOfferLike)) return;
+
+        e.preventDefault(); // Prevent default paste behavior
+
+        for (const segment of segments) {
+          let content = segment;
+
+          // Check if it's a URL with an offer ID
+          const offerIdFromUrl = extractOfferIdFromUrl(segment);
+          const isPotentialOfferId = isOfferId(segment) || offerIdFromUrl !== null;
 
           // If it's an offer ID or URL, try to fetch the full offer string
           if (isPotentialOfferId) {
-            const offerIdToFetch = offerIdFromUrl || content;
+            const offerIdToFetch = offerIdFromUrl || segment;
             logError(`Fetching offer from ${offerIdFromUrl ? 'URL' : 'ID'}...`, 'info');
 
             const fetchedOffer = await fetchOfferFromIdCached(offerIdToFetch);
@@ -338,7 +347,7 @@ export function App(): JSX.Element {
               logError('Offer fetched successfully!', 'info');
             } else {
               logError('Failed to fetch offer from ID', 'error');
-              return;
+              continue;
             }
           }
 

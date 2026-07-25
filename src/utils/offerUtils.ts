@@ -187,6 +187,23 @@ export async function offerStringToId(offerString: string): Promise<string | nul
 }
 
 /**
+ * Splits pasted text into individual offer segments.
+ *
+ * Offer strings, offer IDs, and offer URLs never contain commas or whitespace,
+ * so a batch of them can be safely separated on commas and any whitespace
+ * (spaces, tabs, newlines). Empty segments are dropped and order is preserved.
+ *
+ * @param text The raw pasted text, potentially containing multiple offers
+ * @returns An array of trimmed, non-empty segments (a single value yields one entry)
+ */
+export function splitOfferInput(text: string): string[] {
+  return text
+    .split(/[\s,]+/)
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+}
+
+/**
  * Checks if a string is a 43-44 character base64 offer ID
  * @param value The string to check
  * @returns True if the value is a valid offer ID format
