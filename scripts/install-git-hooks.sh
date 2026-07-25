@@ -1,9 +1,17 @@
+#!/bin/bash
+# Install Git hooks for the Coffer project
+
+echo "🔧 Installing Git hooks..."
+
+# Create the pre-commit hook
+cat > .git/hooks/pre-commit << 'EOF'
+#!/bin/bash
 echo "🔍 Running pre-commit checks..."
 echo ""
 
 # Auto-fix formatting
 echo "📝 Auto-fixing code formatting..."
-deno task format
+deno task format:fix
 if [ $? -ne 0 ]; then
   echo "❌ Formatting failed!"
   exit 1
@@ -32,3 +40,18 @@ echo "✅ Build succeeded"
 echo ""
 
 echo "✨ All pre-commit checks passed!"
+EOF
+
+# Make the hook executable
+chmod +x .git/hooks/pre-commit
+
+echo "✅ Git hooks installed successfully!"
+echo ""
+echo "The pre-commit hook will run:"
+echo "  - deno task format:fix"
+echo "  - deno task lint"
+echo "  - deno task build"
+echo ""
+echo "To skip the hook (not recommended), use: git commit --no-verify"
+
+

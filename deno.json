@@ -18,9 +18,9 @@
     "chia-wallet-sdk-wasm": "npm:chia-wallet-sdk-wasm@^0.29.0"
   },
   "tasks": {
-    "lint": "deno lint --ignore=src/wasm,node_modules,dist,pnpm-lock.yaml",
-    "format": "deno fmt --check --ignore=src/wasm,node_modules,dist,pnpm-lock.yaml",
-    "format:fix": "deno fmt --ignore=src/wasm,node_modules,dist,pnpm-lock.yaml",
+    "lint": "deno lint --ignore=src/wasm,node_modules,dist",
+    "format": "deno fmt --check --ignore=src/wasm,node_modules,dist",
+    "format:fix": "deno fmt --ignore=src/wasm,node_modules,dist",
     "fmt": "deno task format",
     "dev": "deno run --allow-net --allow-read --allow-write --allow-env --allow-run --watch dev.ts",
     "build": "deno run --allow-all build.ts",
@@ -28,7 +28,8 @@
     "test": "deno test --allow-all tests/smoke_test.ts tests/integration/ tests/performance_test.ts",
     "test:smoke": "deno test --allow-all tests/smoke_test.ts",
     "test:integration": "deno test --allow-all tests/integration/",
-    "test:performance": "deno test --allow-all tests/performance_test.ts"
+    "test:performance": "deno test --allow-all tests/performance_test.ts",
+    "hooks:install": "bash scripts/install-git-hooks.sh"
   },
   "fmt": {
     "useTabs": false,

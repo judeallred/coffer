@@ -25,7 +25,7 @@ The application uses the `chia-wallet-sdk-wasm` package for offer validation and
 
 # Tech Stack
 
-This project is implemented as a single-page static client side website. It uses Deno, pnpm, and Preact.
+This project is implemented as a single-page static client side website. It uses Deno and Preact.
 
 ## Build Process
 
@@ -165,7 +165,7 @@ toggleDebug(); // Enable/disable the application log
 
 ```bash
 # Install dependencies
-pnpm install
+deno install
 
 # Start development server with hot reloading
 deno task dev
@@ -173,21 +173,29 @@ deno task dev
 # Open browser to http://localhost:8000
 ```
 
-### Pre-commit Hooks
+### Git Hooks (Optional)
 
-The project uses Husky to automatically run CI checks before each commit:
-
-- **Auto-formatting**: `deno fmt` automatically fixes code style issues
-- **Linting**: `deno lint` checks for code quality issues
-- **Build verification**: Ensures the project builds successfully
-
-These checks run automatically when you commit. To manually run them:
+Install pre-commit hooks to automatically run checks before each commit:
 
 ```bash
-.husky/pre-commit
+deno task hooks:install
 ```
 
-The hooks are installed automatically when you run `pnpm install` via the `prepare` script.
+This will run formatting, linting, and build checks automatically before each commit.
+
+### Development Workflow
+
+Run these commands to ensure code quality:
+
+- **Auto-formatting**: `deno task format:fix` - automatically fixes code style issues
+- **Linting**: `deno task lint` - checks for code quality issues
+- **Build verification**: `deno task build` - ensures the project builds successfully
+
+Run all checks at once:
+
+```bash
+deno task format && deno task lint && deno task test:integration && deno task build
+```
 
 ## Using Coffer
 
