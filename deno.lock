@@ -4,7 +4,8 @@
     "jsr:@std/assert@~0.218.2": "0.218.2",
     "jsr:@std/fmt@~0.218.2": "0.218.2",
     "npm:chia-wallet-sdk-wasm@0.29": "0.29.0",
-    "npm:esbuild@0.19.12": "0.19.12"
+    "npm:esbuild@0.19.12": "0.19.12",
+    "npm:preact@10.19.2": "10.19.2"
   },
   "jsr": {
     "@std/assert@0.218.2": {
@@ -165,6 +166,9 @@
       ],
       "scripts": true,
       "bin": true
+    },
+    "preact@10.19.2": {
+      "integrity": "sha512-UA9DX/OJwv6YwP9Vn7Ti/vF80XL+YA5H2l7BpCtUr3ya8LWHFzpiO5R+N7dN16ujpIxhekRFuOOF82bXX7K/lg=="
     }
   },
   "remote": {
@@ -247,7 +251,8 @@
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@~0.218.2",
-      "npm:chia-wallet-sdk-wasm@0.29"
+      "npm:chia-wallet-sdk-wasm@0.29",
+      "npm:preact@10.19.2"
     ]
   }
 }
