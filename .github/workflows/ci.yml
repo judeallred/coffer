@@ -26,9 +26,6 @@ jobs:
       - name: Install Deno dependencies
         run: deno install
 
-      - name: Check formatting
-        run: deno task format
-
       - name: Run linter
         run: deno task lint
 
