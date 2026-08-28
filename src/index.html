@@ -3,16 +3,16 @@
   <head>
     <!-- Google Tag Manager -->
     <script>
-      (function (w, d, s, l, i) {
-        w[l] = w[l] || [];
-        w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
-        var f = d.getElementsByTagName(s)[0],
-          j = d.createElement(s),
-          dl = l != 'dataLayer' ? '&l=' + l : '';
-        j.async = true;
-        j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
-        f.parentNode.insertBefore(j, f);
-      })(window, document, 'script', 'dataLayer', 'GTM-TG6NXV9P');
+    (function (w, d, s, l, i) {
+      w[l] = w[l] || [];
+      w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+      var f = d.getElementsByTagName(s)[0],
+        j = d.createElement(s),
+        dl = l != 'dataLayer' ? '&l=' + l : '';
+      j.async = true;
+      j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+      f.parentNode.insertBefore(j, f);
+    })(window, document, 'script', 'dataLayer', 'GTM-TG6NXV9P');
     </script>
     <!-- End Google Tag Manager -->
     <meta charset="UTF-8" />
@@ -39,14 +39,14 @@
 
     <!-- Import map for browser module resolution -->
     <script type="importmap">
-      {
-        "imports": {
-          "preact": "https://esm.sh/preact@10.19.2",
-          "preact/": "https://esm.sh/preact@10.19.2/",
-          "chia-wallet-sdk-wasm": "./chia_wallet_sdk_wasm.js",
-          "qrcode": "https://esm.sh/qrcode@1.5.4"
-        }
+    {
+      "imports": {
+        "preact": "https://esm.sh/preact@10.19.2",
+        "preact/": "https://esm.sh/preact@10.19.2/",
+        "chia-wallet-sdk-wasm": "./chia_wallet_sdk_wasm.js",
+        "qrcode": "https://esm.sh/qrcode@1.5.4"
       }
+    }
     </script>
   </head>
   <body>
@@ -63,18 +63,18 @@
 
     <!-- Service Worker Registration -->
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker
-            .register('./sw.js')
-            .then((registration) => {
-              console.log('Service Worker registered with scope:', registration.scope);
-            })
-            .catch((error) => {
-              console.log('Service Worker registration failed:', error);
-            });
-        });
-      }
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker
+          .register('./sw.js')
+          .then((registration) => {
+            console.log('Service Worker registered with scope:', registration.scope);
+          })
+          .catch((error) => {
+            console.log('Service Worker registration failed:', error);
+          });
+      });
+    }
     </script>
   </body>
 </html>
