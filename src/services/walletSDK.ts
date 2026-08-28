@@ -3,6 +3,8 @@
 // and extend them with our custom loader's exports
 
 import { CoinSpend, Signature, SpendBundle } from 'chia-wallet-sdk-wasm';
+import { bytesToHex, findOfferedCoinConflicts, isZeroParent } from '../utils/coinUtils.ts';
+import type { CoinConflict } from '../utils/coinUtils.ts';
 
 // Type for the WASM module - combines official types with our custom loader exports
 type WasmModule = typeof import('chia-wallet-sdk-wasm') & {
@@ -12,6 +14,143 @@ type WasmModule = typeof import('chia-wallet-sdk-wasm') & {
 };
 
 let wasmModule: WasmModule | null = null;
+
+function requireWasm(): WasmModule {
+  if (!wasmModule) {
+    throw new Error('WASM module not initialized. Call initWalletSDK() first.');
+  }
+  return wasmModule;
+}
+
+/**
+ * Extract hex coin IDs for offered (non-settlement) coins in an offer.
+ */
+export function extractOfferedCoinIds(offerString: string): string[] {
+  const wasm = requireWasm();
+  const spendBundle = wasm.decodeOffer(offerString.trim());
+  if (!spendBundle?.coinSpends) return [];
+
+  const ids: string[] = [];
+  for (const coinSpend of spendBundle.coinSpends) {
+    if (isZeroParent(coinSpend.coin.parentCoinInfo)) continue;
+    ids.push(bytesToHex(coinSpend.coin.coinId()));
+  }
+  return ids;
+}
+
+/**
+ * Detect offered coins shared across multiple input offers.
+ */
+export function detectOfferCoinConflicts(offers: string[]): CoinConflict[] {
+  const perOffer = offers.map((offer, index) => ({
+    offerIndex: index + 1,
+    coinIds: extractOfferedCoinIds(offer),
+  }));
+  return findOfferedCoinConflicts(perOffer);
+}
+
+export type ChainCoinStatus = 'unspent' | 'spent' | 'not_found';
+
+export interface ChainCoinCheck {
+  coinId: string;
+  status: ChainCoinStatus;
+}
+
+export interface ChainVerificationResult {
+  success: boolean;
+  checkedCount: number;
+  coins: ChainCoinCheck[];
+  warnings: string[];
+  error?: string;
+}
+
+/**
+ * Verify offered coins are still unspent on mainnet via Coinset.
+ * Settlement coins (zero parent) are excluded by extractOfferedCoinIds.
+ */
+export async function verifyOfferedCoinsOnChain(
+  offers: string[],
+): Promise<ChainVerificationResult> {
+  const wasm = requireWasm();
+
+  const coinIdSet = new Set<string>();
+  for (const offer of offers) {
+    for (const id of extractOfferedCoinIds(offer)) {
+      coinIdSet.add(id);
+    }
+  }
+
+  const coinIds = [...coinIdSet];
+  if (coinIds.length === 0) {
+    return {
+      success: true,
+      checkedCount: 0,
+      coins: [],
+      warnings: ['No offered coins to verify on-chain'],
+    };
+  }
+
+  try {
+    const client = wasm.CoinsetClient.mainnet();
+    const names = coinIds.map((hex) => {
+      const bytes = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < hex.length; i += 2) {
+        bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+      }
+      return bytes;
+    });
+
+    // includeSpentCoins=true so we can report spent coins as warnings
+    const response = await client.getCoinRecordsByNames(names, undefined, undefined, true);
+
+    if (!response.success) {
+      return {
+        success: false,
+        checkedCount: 0,
+        coins: [],
+        warnings: [],
+        error: response.error || 'Coinset request failed',
+      };
+    }
+
+    const recordById = new Map<string, { spent: boolean }>();
+    for (const record of response.coinRecords ?? []) {
+      const id = bytesToHex(record.coin.coinId());
+      recordById.set(id, { spent: record.spent });
+    }
+
+    const coins: ChainCoinCheck[] = [];
+    const warnings: string[] = [];
+
+    for (const coinId of coinIds) {
+      const record = recordById.get(coinId);
+      if (!record) {
+        coins.push({ coinId, status: 'not_found' });
+        warnings.push(`Coin ${coinId.slice(0, 8)}… not found on chain`);
+      } else if (record.spent) {
+        coins.push({ coinId, status: 'spent' });
+        warnings.push(`Coin ${coinId.slice(0, 8)}… is already spent`);
+      } else {
+        coins.push({ coinId, status: 'unspent' });
+      }
+    }
+
+    return {
+      success: warnings.length === 0,
+      checkedCount: coinIds.length,
+      coins,
+      warnings,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      checkedCount: 0,
+      coins: [],
+      warnings: [],
+      error: error instanceof Error ? error.message : 'Coinset verification failed',
+    };
+  }
+}
 
 // Initialize the WASM module from local files using ArrayBuffer method
 export async function initWalletSDK(): Promise<void> {
@@ -134,6 +273,20 @@ export function combineOffers(offers: string[]): {
         `🔄 Combining ${validOffers.length} offers using proper SpendBundle aggregation...`,
       );
 
+      // Reject offers that spend the same offered coin — the combined bundle would be invalid.
+      const conflicts = detectOfferCoinConflicts(validOffers);
+      if (conflicts.length > 0) {
+        const detail = conflicts
+          .map(
+            (c) => `coin ${c.coinId.slice(0, 8)}… shared by offers ${c.offerIndexes.join(', ')}`,
+          )
+          .join('; ');
+        return {
+          success: false,
+          error: `Cannot combine offers that share input coins: ${detail}`,
+        };
+      }
+
       // Parse all offers to SpendBundles
       const spendBundles: SpendBundle[] = [];
       for (const [i, offerString] of validOffers.entries()) {
@@ -157,7 +310,6 @@ export function combineOffers(offers: string[]): {
       const requestedCoinSpends: CoinSpend[] = [];
       const offeredCoinSpends: CoinSpend[] = [];
       const allSignatures: Signature[] = [];
-      const offeredCoinSpendParentInfo = new Uint8Array(32); // 0x0
 
       for (const [i, bundle] of spendBundles.entries()) {
         console.log(`🔍 Processing SpendBundle ${i + 1}...`);
@@ -165,7 +317,8 @@ export function combineOffers(offers: string[]): {
         // Add all coin spends from this bundle
         if (bundle.coinSpends && Array.isArray(bundle.coinSpends)) {
           for (const coinSpend of bundle.coinSpends) {
-            if (coinSpend.coin.parentCoinInfo === offeredCoinSpendParentInfo) {
+            // Settlement / requested coins use a 32-byte zero parent
+            if (isZeroParent(coinSpend.coin.parentCoinInfo)) {
               requestedCoinSpends.push(coinSpend);
             } else {
               offeredCoinSpends.push(coinSpend);

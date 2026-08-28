@@ -157,6 +157,10 @@ export function About(): JSX.Element {
           >
             Chia Wallet SDK
           </a>
+          ,{' '}
+          <a href='https://www.coinset.org' target='_blank' rel='noopener noreferrer'>
+            Coinset
+          </a>
           , and the{' '}
           <a href='https://dexie.space' target='_blank' rel='noopener noreferrer'>
             dexie

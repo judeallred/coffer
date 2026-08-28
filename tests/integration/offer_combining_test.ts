@@ -136,27 +136,19 @@ Deno.test({
       assertEquals(result.combinedOffer, TEST_OFFER_1, 'Single offer should be returned as-is');
     });
 
-    await t.step('should handle potential coin conflicts', async () => {
-      // Test coin conflict detection by attempting to combine the same offer with itself
-      // In a real scenario, this might create a conflict if the same coins are spent twice
-      console.log(`\n🔍 Testing potential coin conflict scenario...`);
+    await t.step('should reject offers that share the same offered coins', async () => {
+      // Combining an offer with itself must fail — the same coins would be spent twice
+      console.log(`\n🔍 Testing coin conflict detection...`);
 
       const result = await combineOffers([TEST_OFFER_1, TEST_OFFER_1]);
 
-      // Different outcomes are acceptable depending on implementation:
-      if (result.success === false && result.error?.includes('conflict')) {
-        console.log(`✅ Properly detected coin conflict: ${result.error}`);
-        assertEquals(true, true, 'Coin conflict detection working correctly');
-      } else if (result.success === true) {
-        // Some implementations might allow this if the coins are different or deduplication occurs
-        console.log(
-          `⚠️ No conflict detected - offers may use different coins or deduplication occurred`,
-        );
-        assertEquals(result.success, true, 'No conflict is also valid in some scenarios');
-      } else {
-        console.log(`ℹ️ Other error occurred: ${result.error}`);
-        assertEquals(typeof result.error, 'string', 'Should have error message');
-      }
+      assertEquals(result.success, false, 'Duplicate-coin combine should fail');
+      assertEquals(
+        result.error?.includes('share input coins') ?? false,
+        true,
+        'Error should mention shared input coins',
+      );
+      console.log(`✅ Properly detected coin conflict: ${result.error}`);
     });
   },
 });
