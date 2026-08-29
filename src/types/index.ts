@@ -32,6 +32,8 @@ export interface AssetItem {
   type: 'asset';
   code: string;
   amount: number;
+  /** Hex asset id for CATs, used to label amounts derived from offer internals. */
+  assetId?: string | null;
 }
 
 export interface DexieOfferSummary {

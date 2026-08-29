@@ -106,7 +106,7 @@ function encodeBech32m(prefix: string, data: Uint8Array): string {
  * @param prefix The bech32m prefix (e.g., 'nft', 'col')
  * @returns Bech32m encoded string
  */
-function hexToBech32m(hexString: string, prefix: string): string {
+export function hexToBech32m(hexString: string, prefix: string): string {
   // Remove 0x prefix if present
   const hex = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
 
@@ -391,6 +391,7 @@ function parseOfferItems(items: DexieOfferItem[]): Array<NFTItem | AssetItem> {
       type: 'asset' as const,
       code: item.code || item.id || 'UNKNOWN',
       amount: item.amount || 0,
+      assetId: item.id ?? null,
     };
   });
 }

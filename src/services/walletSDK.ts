@@ -3,8 +3,11 @@
 // and extend them with our custom loader's exports
 
 import { CoinSpend, Signature, SpendBundle } from 'chia-wallet-sdk-wasm';
+import type { ParsedCatInfo, ParsedNftInfo, Program, Puzzle } from 'chia-wallet-sdk-wasm';
 import { bytesToHex, findOfferedCoinConflicts, isZeroParent } from '../utils/coinUtils.ts';
 import type { CoinConflict } from '../utils/coinUtils.ts';
+import { XCH_KEY } from '../utils/offerContents.ts';
+import type { NftAsset, OfferContents } from '../utils/offerContents.ts';
 
 // Type for the WASM module - combines official types with our custom loader exports
 type WasmModule = typeof import('chia-wallet-sdk-wasm') & {
@@ -47,6 +50,171 @@ export function detectOfferCoinConflicts(offers: string[]): CoinConflict[] {
     coinIds: extractOfferedCoinIds(offer),
   }));
   return findOfferedCoinConflicts(perOffer);
+}
+
+const MAX_PUZZLE_COST = 11_000_000_000n;
+
+function nftAssetOf(
+  info: { launcherId: Uint8Array; royaltyBasisPoints: number; royaltyPuzzleHash: Uint8Array },
+): NftAsset {
+  return {
+    launcherId: bytesToHex(info.launcherId),
+    royaltyBasisPoints: info.royaltyBasisPoints,
+    royaltyPuzzleHash: bytesToHex(info.royaltyPuzzleHash),
+  };
+}
+
+/**
+ * Sum the notarized payment amounts in a settlement coin's solution. These are
+ * the amounts the maker is asking the taker to pay.
+ */
+function sumNotarizedPayments(solution: Program): bigint {
+  let total = 0n;
+  for (const entry of solution.toList() ?? []) {
+    let notarized;
+    try {
+      notarized = entry.parseNotarizedPayment();
+    } catch {
+      continue;
+    }
+    if (!notarized) continue;
+    for (const payment of notarized.payments) {
+      total += payment.amount;
+    }
+  }
+  return total;
+}
+
+/**
+ * Total of a spend's CREATE_COIN outputs paying to `targetPuzzleHash`, plus the
+ * total of every output (used for fee accounting).
+ */
+function sumCreateCoins(
+  puzzleReveal: Program,
+  solution: Program,
+  targetPuzzleHash: string,
+): { toTarget: bigint; total: bigint } {
+  let toTarget = 0n;
+  let total = 0n;
+
+  const output = puzzleReveal.run(solution, MAX_PUZZLE_COST, false);
+  for (const condition of output.value.toList() ?? []) {
+    let createCoin;
+    try {
+      createCoin = condition.parseCreateCoin();
+    } catch {
+      continue;
+    }
+    if (!createCoin) continue;
+    total += createCoin.amount;
+    if (bytesToHex(createCoin.puzzleHash) === targetPuzzleHash) {
+      toTarget += createCoin.amount;
+    }
+  }
+
+  return { toTarget, total };
+}
+
+function parseNftInfoSafe(puzzle: Puzzle): ParsedNftInfo | null {
+  try {
+    return puzzle.parseNftInfo() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function parseCatInfoSafe(puzzle: Puzzle): ParsedCatInfo | null {
+  try {
+    return puzzle.parseCatInfo() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Derive what a single offer requests and offers by reading its coin spends.
+ *
+ * Settlement coins (zero parent) carry the requested payments. Real coins carry
+ * the offered assets, identified by the outputs that pay into the settlement
+ * variant of that asset's puzzle.
+ */
+export function parseOfferContents(offerString: string): OfferContents {
+  const wasm = requireWasm();
+  const spendBundle = wasm.decodeOffer(offerString.trim());
+
+  const settlementPuzzleHash = wasm.Constants.settlementPaymentHash();
+  const settlementHex = bytesToHex(settlementPuzzleHash);
+
+  const contents: OfferContents = {
+    requestedFungible: new Map(),
+    requestedNfts: new Map(),
+    offeredFungible: new Map(),
+    offeredNfts: new Map(),
+    fee: 0n,
+  };
+
+  const add = (map: Map<string, bigint>, key: string, mojos: bigint): void => {
+    if (mojos <= 0n) return;
+    map.set(key, (map.get(key) ?? 0n) + mojos);
+  };
+
+  for (const coinSpend of spendBundle.coinSpends ?? []) {
+    const clvm = new wasm.Clvm();
+    const puzzleReveal = clvm.deserialize(coinSpend.puzzleReveal);
+    const solution = clvm.deserialize(coinSpend.solution);
+    const puzzle = puzzleReveal.puzzle();
+
+    const nft = parseNftInfoSafe(puzzle);
+    const cat = nft ? null : parseCatInfoSafe(puzzle);
+    // Captured before p2PuzzleHash is rewritten below to derive the settlement variant.
+    const nftAsset = nft ? nftAssetOf(nft.info) : null;
+
+    if (isZeroParent(coinSpend.coin.parentCoinInfo)) {
+      const requested = sumNotarizedPayments(solution);
+      if (nftAsset) {
+        contents.requestedNfts.set(nftAsset.launcherId, nftAsset);
+      } else if (cat) {
+        add(contents.requestedFungible, `cat:${bytesToHex(cat.info.assetId)}`, requested);
+      } else {
+        add(contents.requestedFungible, XCH_KEY, requested);
+      }
+      continue;
+    }
+
+    // Offered side: an asset is offered when the spend pays into the
+    // settlement variant of its own puzzle, which the taker can then claim.
+    let targetPuzzleHash = settlementHex;
+    if (nft) {
+      const info = nft.info;
+      info.p2PuzzleHash = settlementPuzzleHash;
+      targetPuzzleHash = bytesToHex(info.puzzleHash());
+    } else if (cat) {
+      const info = cat.info;
+      info.p2PuzzleHash = settlementPuzzleHash;
+      targetPuzzleHash = bytesToHex(info.puzzleHash());
+    }
+
+    let sums: { toTarget: bigint; total: bigint };
+    try {
+      sums = sumCreateCoins(puzzleReveal, solution, targetPuzzleHash);
+    } catch {
+      continue;
+    }
+
+    if (nftAsset) {
+      if (sums.toTarget > 0n) {
+        contents.offeredNfts.set(nftAsset.launcherId, nftAsset);
+      }
+    } else if (cat) {
+      add(contents.offeredFungible, `cat:${bytesToHex(cat.info.assetId)}`, sums.toTarget);
+    } else {
+      add(contents.offeredFungible, XCH_KEY, sums.toTarget);
+      // Plain XCH spends are the only place a maker fee can hide.
+      contents.fee += coinSpend.coin.amount - sums.total;
+    }
+  }
+
+  return contents;
 }
 
 export type ChainCoinStatus = 'unspent' | 'spent' | 'not_found';

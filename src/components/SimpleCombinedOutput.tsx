@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'preact/hooks';
-import type { AssetItem, NFTItem, Offer } from '../types/index.ts';
+import type { Offer } from '../types/index.ts';
 import type { ChainVerificationResult } from '../services/walletSDK.ts';
-import { buildCombinedPreview } from '../utils/combinedOfferPreview.ts';
+import { buildCombinedPreview, combinedOfferFileName } from '../utils/combinedOfferPreview.ts';
+import type {
+  CombinedPreview,
+  PreviewAmount,
+  PreviewNft,
+  PreviewSide,
+} from '../utils/combinedOfferPreview.ts';
+import type { CombinedContents } from '../utils/offerContents.ts';
 import dexieDuckLogo from '../assets/dexie-duck.svg';
 
 interface SimpleCombinedOutputProps {
@@ -17,54 +24,69 @@ type VerificationUiState =
   | { kind: 'warning'; details: string[] }
   | { kind: 'error'; message: string };
 
-function renderPreviewItem(item: NFTItem | AssetItem, idx: number): JSX.Element {
-  if (item.type === 'nft') {
-    return (
-      <div key={idx} className='dexie-item dexie-nft-item'>
-        {item.thumbnail && (
-          <img src={item.thumbnail} alt={item.name} className='dexie-nft-thumbnail' />
-        )}
-        <div className='dexie-nft-details'>
-          <div className='dexie-nft-name'>
-            {item.nftId
+function renderPreviewNft(nft: PreviewNft, idx: number): JSX.Element {
+  return (
+    <div key={`nft-${idx}`} className='dexie-item dexie-nft-item'>
+      {nft.thumbnail && <img src={nft.thumbnail} alt={nft.name} className='dexie-nft-thumbnail' />}
+      <div className='dexie-nft-details'>
+        <div className='dexie-nft-name'>
+          {nft.nftId
+            ? (
+              <a
+                href={`https://mintgarden.io/nfts/${nft.nftId}`}
+                target='_blank'
+                rel='noopener noreferrer'
+                className='dexie-link'
+              >
+                {nft.name}
+              </a>
+            )
+            : nft.name}
+        </div>
+        <div className='dexie-nft-meta'>
+          {nft.collectionName &&
+            (nft.collectionId
               ? (
                 <a
-                  href={`https://mintgarden.io/nfts/${item.nftId}`}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='dexie-link'
-                >
-                  {item.name}
-                </a>
-              )
-              : item.name}
-          </div>
-          <div className='dexie-nft-meta'>
-            {item.collectionId
-              ? (
-                <a
-                  href={`https://mintgarden.io/collections/${item.collectionId}`}
+                  href={`https://mintgarden.io/collections/${nft.collectionId}`}
                   target='_blank'
                   rel='noopener noreferrer'
                   className='dexie-link dexie-nft-collection'
                 >
-                  {item.collectionName}
+                  {nft.collectionName}
                 </a>
               )
-              : <span className='dexie-nft-collection'>{item.collectionName}</span>}
-            {item.royaltyPercent > 0 && (
-              <span className='dexie-nft-royalty'>• {item.royaltyPercent}% royalty</span>
-            )}
-          </div>
+              : <span className='dexie-nft-collection'>{nft.collectionName}</span>)}
+          {nft.royaltyPercent > 0 && (
+            <span className='dexie-nft-royalty'>• {nft.royaltyPercent}% royalty</span>
+          )}
         </div>
       </div>
-    );
-  }
-  return (
-    <div key={idx} className='dexie-item dexie-asset-item'>
-      • {item.amount} {item.code}
     </div>
   );
+}
+
+function renderPreviewAmount(amount: PreviewAmount, idx: number): JSX.Element {
+  return (
+    <div key={`amt-${idx}`} className='dexie-item dexie-asset-item'>
+      • {amount.amount} {amount.code}
+    </div>
+  );
+}
+
+function renderSide(label: string, side: PreviewSide): JSX.Element | null {
+  if (side.amounts.length === 0 && side.nfts.length === 0) return null;
+  return (
+    <div className='dexie-info-box'>
+      <span className='dexie-section-label'>{label}</span>
+      {side.amounts.map(renderPreviewAmount)}
+      {side.nfts.map(renderPreviewNft)}
+    </div>
+  );
+}
+
+function amountListText(amounts: PreviewAmount[]): string {
+  return amounts.map((amount) => `${amount.amount} ${amount.code}`).join(' + ');
 }
 
 export function SimpleCombinedOutput({
@@ -76,11 +98,19 @@ export function SimpleCombinedOutput({
   const [isGenerating, setIsGenerating] = useState(false);
   const [buttonAnimation, setButtonAnimation] = useState<'success' | 'error' | ''>('');
   const [buttonEmoji, setButtonEmoji] = useState<string>('📋');
+  const [downloadAnimation, setDownloadAnimation] = useState<'success' | 'error' | ''>('');
+  const [downloadEmoji, setDownloadEmoji] = useState<string>('💾');
   const [verification, setVerification] = useState<VerificationUiState>({ kind: 'idle' });
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  const [preview, setPreview] = useState<CombinedPreview | null>(null);
+  const [contents, setContents] = useState<CombinedContents | null>(null);
+
   const validOffers = offers.filter((offer) => offer.isValid && offer.content.trim());
-  const preview = buildCombinedPreview(validOffers);
+  // dexie data arrives after an offer is added; rebuild the preview when it lands.
+  const metadataKey = validOffers
+    .map((offer) => (offer.dexieData?.success ? offer.dexieData.offerId ?? '1' : '0'))
+    .join(',');
 
   // Update combined offer when valid offers change, then auto-verify on Coinset
   useEffect(() => {
@@ -89,6 +119,7 @@ export function SimpleCombinedOutput({
     const updateCombinedOffer = async (): Promise<void> => {
       if (disabled || validOffers.length === 0) {
         setCombinedOffer('');
+        setContents(null);
         setVerification({ kind: 'idle' });
         return;
       }
@@ -98,9 +129,10 @@ export function SimpleCombinedOutput({
       setDetailsOpen(false);
 
       try {
-        const { combineOffers, verifyOfferedCoinsOnChain } = await import(
+        const { combineOffers, parseOfferContents, verifyOfferedCoinsOnChain } = await import(
           '../services/walletSDK.ts'
         );
+        const { combineOfferContents } = await import('../utils/offerContents.ts');
         const offerStrings = validOffers.map((offer) => offer.content);
         const result = combineOffers(offerStrings);
 
@@ -108,6 +140,15 @@ export function SimpleCombinedOutput({
 
         if (result.success && result.combinedOffer) {
           setCombinedOffer(result.combinedOffer);
+
+          // Preview is derived from the offers' own coin spends so unlisted
+          // offers still contribute to the totals.
+          try {
+            setContents(combineOfferContents(offerStrings.map(parseOfferContents)));
+          } catch (error) {
+            setContents(null);
+            onLogError(`Could not build combined preview: ${error}`, 'warning');
+          }
 
           // Auto-verify offered coins on mainnet via Coinset after every successful combine
           setVerification({ kind: 'checking' });
@@ -134,12 +175,14 @@ export function SimpleCombinedOutput({
           }
         } else {
           setCombinedOffer('');
+          setContents(null);
           setVerification({ kind: 'idle' });
           onLogError(result.error || 'Failed to combine offers', 'error');
         }
       } catch (error) {
         if (cancelled) return;
         setCombinedOffer('');
+        setContents(null);
         setVerification({ kind: 'idle' });
         onLogError(`Error combining offers: ${error}`, 'error');
       } finally {
@@ -155,6 +198,12 @@ export function SimpleCombinedOutput({
       cancelled = true;
     };
   }, [disabled, validOffers.length, validOffers.map((o) => o.content).join(','), onLogError]);
+
+  // Re-label the preview when marketplace names/thumbnails arrive, without
+  // re-combining or re-running the on-chain check.
+  useEffect(() => {
+    setPreview(contents ? buildCombinedPreview(contents, validOffers) : null);
+  }, [contents, metadataKey]);
 
   const handleCopyToClipboard = async (): Promise<void> => {
     if (!combinedOffer) return;
@@ -177,6 +226,41 @@ export function SimpleCombinedOutput({
       setTimeout(() => {
         setButtonEmoji('📋');
         setButtonAnimation('');
+      }, 400);
+    }
+  };
+
+  const canDownload = combinedOffer.trim().length > 0;
+
+  const handleDownloadOffer = (): void => {
+    if (!canDownload) return;
+
+    try {
+      const filename = combinedOfferFileName(combinedOffer);
+      const blob = new Blob([combinedOffer], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = globalThis.document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      globalThis.document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      onLogError(`Downloaded ${filename}`, 'info');
+      setDownloadAnimation('success');
+      setTimeout(() => setDownloadEmoji('✅'), 100);
+      setTimeout(() => {
+        setDownloadEmoji('💾');
+        setDownloadAnimation('');
+      }, 400);
+    } catch (error) {
+      onLogError(`Failed to download offer: ${error}`, 'error');
+      setDownloadAnimation('error');
+      setTimeout(() => setDownloadEmoji('☹'), 100);
+      setTimeout(() => {
+        setDownloadEmoji('💾');
+        setDownloadAnimation('');
       }, 400);
     }
   };
@@ -281,15 +365,26 @@ export function SimpleCombinedOutput({
             placeholder='Combined offer will appear here...'
             onClick={(e) => (e.target as HTMLInputElement).select()}
           />
-          <button
-            type='button'
-            className={`copy-button ${buttonAnimation} ${!combinedOffer ? 'hidden' : ''}`}
-            onClick={handleCopyToClipboard}
-            title='Copy to clipboard'
-            disabled={!combinedOffer}
-          >
-            {buttonEmoji}
-          </button>
+          <div className='output-actions'>
+            <button
+              type='button'
+              className={`copy-button ${buttonAnimation} ${!combinedOffer ? 'hidden' : ''}`}
+              onClick={handleCopyToClipboard}
+              title='Copy to clipboard'
+              disabled={!combinedOffer}
+            >
+              {buttonEmoji}
+            </button>
+            <button
+              type='button'
+              className={`copy-button ${downloadAnimation} ${!canDownload ? 'hidden' : ''}`}
+              onClick={handleDownloadOffer}
+              title='Download .offer file'
+              disabled={!canDownload}
+            >
+              {downloadEmoji}
+            </button>
+          </div>
         </div>
 
         {renderVerification()}
@@ -299,49 +394,77 @@ export function SimpleCombinedOutput({
             <div className='combined-preview-header'>
               <img src={dexieDuckLogo} alt='dexie' className='dexie-logo' />
               <span className='combined-preview-title'>Combined preview</span>
-              <span className='combined-preview-note'>from input offers</span>
+              <span className='combined-preview-note'>from the combined offer</span>
             </div>
 
             <div className='dexie-info-boxes'>
-              {preview.requested.length > 0 && (
-                <div className='dexie-info-box'>
-                  <span className='dexie-section-label'>Requested:</span>
-                  {preview.requested.map((item, idx) => renderPreviewItem(item, idx))}
-                </div>
-              )}
-              {preview.offered.length > 0 && (
-                <div className='dexie-info-box'>
-                  <span className='dexie-section-label'>Offered:</span>
-                  {preview.offered.map((item, idx) => renderPreviewItem(item, idx))}
-                </div>
-              )}
+              {renderSide('Requested:', preview.requested)}
+              {renderSide('Offered:', preview.offered)}
             </div>
 
-            {preview.royaltyBreakdown.length > 0 && (
+            {preview.royalties.length > 0 && (
               <div className='royalty-breakdown'>
                 <span className='dexie-section-label'>Royalty breakdown:</span>
                 <ul className='royalty-breakdown-list'>
-                  {preview.royaltyBreakdown.map((entry, idx) => (
+                  {preview.royalties.map((entry, idx) => (
                     <li key={idx}>
-                      {entry.nftId
+                      {entry.nft.nftId
                         ? (
                           <a
-                            href={`https://mintgarden.io/nfts/${entry.nftId}`}
+                            href={`https://mintgarden.io/nfts/${entry.nft.nftId}`}
                             target='_blank'
                             rel='noopener noreferrer'
                             className='dexie-link'
                           >
-                            {entry.name}
+                            {entry.nft.name}
                           </a>
                         )
-                        : entry.name}
+                        : entry.nft.name}
                       {' — '}
-                      <strong>{entry.royaltyPercent}%</strong>
+                      <strong>{entry.nft.royaltyPercent}%</strong>
+                      {' ('}
+                      {amountListText(entry.amounts)}
+                      {', included above)'}
                     </li>
                   ))}
                 </ul>
               </div>
             )}
+
+            {(preview.intermediates.amounts.length > 0 ||
+              preview.intermediates.nfts.length > 0) && (
+              <div className='royalty-breakdown'>
+                <span className='dexie-section-label'>Cancels out between offers:</span>
+                <ul className='royalty-breakdown-list'>
+                  {preview.intermediates.amounts.map((amount, idx) => (
+                    <li key={`i-amt-${idx}`}>
+                      {amount.amount} {amount.code}
+                    </li>
+                  ))}
+                  {preview.intermediates.nfts.map((nft, idx) => (
+                    <li key={`i-nft-${idx}`}>
+                      {nft.nftId
+                        ? (
+                          <a
+                            href={`https://mintgarden.io/nfts/${nft.nftId}`}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='dexie-link'
+                          >
+                            {nft.name}
+                          </a>
+                        )
+                        : nft.name}
+                    </li>
+                  ))}
+                </ul>
+                <p className='combined-preview-note'>
+                  Passes through the combined offer without reaching the taker.
+                </p>
+              </div>
+            )}
+
+            {preview.fee && <p className='combined-preview-note'>Maker fee: {preview.fee} XCH</p>}
           </div>
         )}
       </div>

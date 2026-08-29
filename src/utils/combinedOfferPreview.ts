@@ -1,75 +1,188 @@
-// Build a combined-offer preview by unioning Dexie metadata from input offers
+// Build the combined-offer preview from the offer's own contents.
+//
+// Amounts and royalties come from the combined offer's coin spends, so they stay
+// correct for offers that aren't listed on any marketplace. dexie/MintGarden
+// data is used only to put names and thumbnails on the assets we already found.
 
-import type { AssetItem, DexieOfferSummary, NFTItem, Offer } from '../types/index.ts';
+import type { AssetItem, NFTItem, Offer } from '../types/index.ts';
+import { hexToBech32m } from './offerUtils.ts';
+import { formatMojos, XCH_KEY } from './offerContents.ts';
+import type { CombinedContents, FungibleAmount, NftAsset } from './offerContents.ts';
+
+export interface PreviewNft {
+  launcherId: string;
+  nftId: string | null;
+  name: string;
+  collectionName: string | null;
+  collectionId: string | null;
+  thumbnail: string | null;
+  royaltyPercent: number;
+}
+
+export interface PreviewAmount {
+  key: string;
+  amount: string;
+  code: string;
+}
+
+export interface PreviewSide {
+  amounts: PreviewAmount[];
+  nfts: PreviewNft[];
+}
 
 export interface CombinedPreview {
-  offered: Array<NFTItem | AssetItem>;
-  requested: Array<NFTItem | AssetItem>;
-  royaltyBreakdown: Array<{ name: string; royaltyPercent: number; nftId: string | null }>;
+  requested: PreviewSide;
+  offered: PreviewSide;
+  /** Assets that cancel out between offers and never reach the taker. */
+  intermediates: PreviewSide;
+  royalties: Array<{ nft: PreviewNft; amounts: PreviewAmount[] }>;
+  /** Maker fee in XCH, omitted when zero. */
+  fee: string | null;
 }
 
-function itemKey(item: NFTItem | AssetItem): string {
-  if (item.type === 'nft') {
-    return `nft:${item.nftId ?? item.name}`;
-  }
-  return `asset:${item.code}:${item.amount}`;
+interface NftMetadata {
+  name: string;
+  collectionName: string | null;
+  collectionId: string | null;
+  thumbnail: string | null;
 }
 
-function dedupeItems(items: Array<NFTItem | AssetItem>): Array<NFTItem | AssetItem> {
-  const seen = new Set<string>();
-  const result: Array<NFTItem | AssetItem> = [];
-  for (const item of items) {
-    const key = itemKey(item);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push(item);
+interface MetadataIndex {
+  nfts: Map<string, NftMetadata>;
+  catCodes: Map<string, string>;
+}
+
+function shortId(id: string): string {
+  return id.length > 12 ? `${id.slice(0, 6)}…${id.slice(-4)}` : id;
+}
+
+function safeNftId(launcherId: string): string | null {
+  try {
+    return hexToBech32m(launcherId, 'nft');
+  } catch {
+    return null;
   }
-  return result;
 }
 
 /**
- * Union Dexie offered/requested summaries from valid input offers into a
- * combined preview. Royalty breakdown lists each unique NFT with royalty > 0.
+ * Index names/thumbnails from whichever input offers had marketplace data.
  */
-export function buildCombinedPreview(offers: Offer[]): CombinedPreview | null {
-  const validWithDexie = offers.filter(
-    (o) => o.isValid && o.dexieData?.success && o.dexieData.summary,
-  );
+function buildMetadataIndex(offers: Offer[]): MetadataIndex {
+  const nfts = new Map<string, NftMetadata>();
+  const catCodes = new Map<string, string>();
 
-  if (validWithDexie.length === 0) {
-    return null;
+  for (const offer of offers) {
+    const summary = offer.dexieData?.success ? offer.dexieData.summary : undefined;
+    if (!summary) continue;
+
+    for (const item of [...summary.offered, ...summary.requested]) {
+      if (item.type === 'nft') {
+        const nft = item as NFTItem;
+        if (!nft.nftId) continue;
+        nfts.set(nft.nftId, {
+          name: nft.name,
+          collectionName: nft.collectionName || null,
+          collectionId: nft.collectionId,
+          thumbnail: nft.thumbnail,
+        });
+      } else {
+        const asset = item as AssetItem;
+        if (asset.assetId && asset.code) {
+          catCodes.set(asset.assetId.toLowerCase(), asset.code);
+        }
+      }
+    }
   }
 
-  const offered: Array<NFTItem | AssetItem> = [];
-  const requested: Array<NFTItem | AssetItem> = [];
+  return { nfts, catCodes };
+}
 
-  for (const offer of validWithDexie) {
-    const summary = offer.dexieData!.summary as DexieOfferSummary;
-    offered.push(...summary.offered);
-    requested.push(...summary.requested);
-  }
+function toPreviewNft(asset: NftAsset, index: MetadataIndex): PreviewNft {
+  const nftId = safeNftId(asset.launcherId);
+  const metadata = nftId ? index.nfts.get(nftId) : undefined;
 
-  const dedupedOffered = dedupeItems(offered);
-  const dedupedRequested = dedupeItems(requested);
+  return {
+    launcherId: asset.launcherId,
+    nftId,
+    name: metadata?.name ?? `NFT ${shortId(nftId ?? asset.launcherId)}`,
+    collectionName: metadata?.collectionName ?? null,
+    collectionId: metadata?.collectionId ?? null,
+    thumbnail: metadata?.thumbnail ?? null,
+    royaltyPercent: asset.royaltyBasisPoints / 100,
+  };
+}
 
-  const royaltyBreakdown: CombinedPreview['royaltyBreakdown'] = [];
-  const seenNfts = new Set<string>();
-
-  for (const item of [...dedupedOffered, ...dedupedRequested]) {
-    if (item.type !== 'nft' || item.royaltyPercent <= 0) continue;
-    const key = item.nftId ?? item.name;
-    if (seenNfts.has(key)) continue;
-    seenNfts.add(key);
-    royaltyBreakdown.push({
-      name: item.name,
-      royaltyPercent: item.royaltyPercent,
-      nftId: item.nftId,
-    });
+function toPreviewAmount(amount: FungibleAmount, index: MetadataIndex): PreviewAmount {
+  let code = 'XCH';
+  if (amount.key !== XCH_KEY && amount.assetId) {
+    code = index.catCodes.get(amount.assetId.toLowerCase()) ?? `CAT ${shortId(amount.assetId)}`;
   }
 
   return {
-    offered: dedupedOffered,
-    requested: dedupedRequested,
-    royaltyBreakdown,
+    key: amount.key,
+    amount: formatMojos(amount.key, amount.mojos),
+    code,
   };
+}
+
+function toSide(
+  amounts: FungibleAmount[],
+  nfts: NftAsset[],
+  index: MetadataIndex,
+): PreviewSide {
+  return {
+    amounts: amounts.map((amount) => toPreviewAmount(amount, index)),
+    nfts: nfts.map((nft) => toPreviewNft(nft, index)),
+  };
+}
+
+function isEmptySide(side: PreviewSide): boolean {
+  return side.amounts.length === 0 && side.nfts.length === 0;
+}
+
+/**
+ * Turn derived combined-offer contents into display data.
+ * Returns null when the offer resolves to nothing on either side.
+ */
+export function buildCombinedPreview(
+  contents: CombinedContents,
+  offers: Offer[],
+): CombinedPreview | null {
+  const index = buildMetadataIndex(offers);
+
+  const requested = toSide(contents.requestedFungible, contents.requestedNfts, index);
+  const offered = toSide(contents.offeredFungible, contents.offeredNfts, index);
+  const intermediates = toSide(
+    contents.intermediateFungible,
+    contents.intermediateNfts,
+    index,
+  );
+
+  if (isEmptySide(requested) && isEmptySide(offered)) {
+    return null;
+  }
+
+  return {
+    requested,
+    offered,
+    intermediates,
+    royalties: contents.royalties.map((charge) => ({
+      nft: toPreviewNft(charge.nft, index),
+      amounts: charge.amounts.map((amount) => toPreviewAmount(amount, index)),
+    })),
+    fee: contents.fee > 0n ? formatMojos(XCH_KEY, contents.fee) : null,
+  };
+}
+
+/**
+ * Filename for downloading a combined offer: `offer` plus the last ~12
+ * characters of the offer string, plus a `.offer` extension
+ * (e.g. `offercmqvpsrvl00n.offer`).
+ */
+export function combinedOfferFileName(offer: string, suffixLength = 12): string {
+  const trimmed = offer.trim();
+  if (!trimmed) {
+    throw new Error('Cannot download an empty offer');
+  }
+  return `offer${trimmed.slice(-suffixLength)}.offer`;
 }

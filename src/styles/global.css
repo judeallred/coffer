@@ -836,6 +836,13 @@ body {
   animation: fadeInOut 0.4s ease;
 }
 
+.output-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
 @keyframes fadeInOut {
   0% {
     opacity: 1;
@@ -1064,6 +1071,10 @@ body {
   }
 
   .copy-button {
+    align-self: center;
+  }
+
+  .output-actions {
     align-self: center;
   }
 
