@@ -169,6 +169,17 @@ Deno.test('combineOfferContents', async (t) => {
     assertEquals(formatMojos(XCH_KEY, combined.requestedFungible[0].mojos), '2.2');
   });
 
+  await t.step('adds NFT royalty onto the requested amount the taker pays', () => {
+    const offer = emptyContents();
+    offer.requestedFungible.set(XCH_KEY, 200_000n * MOJOS_PER_XCH);
+    offer.offeredNfts.set('warbear', nft('warbear', 500));
+
+    const combined = combineOfferContents([offer]);
+    assertEquals(formatMojos(XCH_KEY, combined.requestedFungible[0].mojos), '210000');
+    assertEquals(combined.offeredNfts.length, 1);
+    assertEquals(formatMojos(XCH_KEY, combined.royalties[0].amounts[0].mojos), '10000');
+  });
+
   await t.step('charges no royalty when nothing fungible is requested', () => {
     const a = emptyContents();
     a.offeredNfts.set('one', nft('one', 1000));

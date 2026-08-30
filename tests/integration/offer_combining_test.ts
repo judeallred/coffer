@@ -4,7 +4,9 @@ import {
   combineOffers,
   initWalletSDK,
   isWalletSDKInitialized,
+  parseOfferContents,
 } from '../../src/services/walletSDK.ts';
+import { combineOfferContents, XCH_KEY } from '../../src/utils/offerContents.ts';
 
 /**
  * Integration test for offer combining functionality using proper SpendBundle aggregation
@@ -209,6 +211,24 @@ Deno.test({
       // Log the full combined offer for manual verification
       console.log(`\n📋 USER COMBINED OFFER:`);
       console.log(result.combinedOffer);
+    });
+
+    await t.step('should include the offered NFT and its royalty in the preview totals', () => {
+      const nftOffer = parseOfferContents(USER_OFFER_1);
+      assertEquals(nftOffer.offeredNfts.size, 1, 'NFT offer should list the offered NFT');
+      const nft = [...nftOffer.offeredNfts.values()][0];
+      assertEquals(nft.royaltyBasisPoints > 0, true);
+
+      const requestedBeforeRoyalty = nftOffer.requestedFungible.get(XCH_KEY) ?? 0n;
+      assertEquals(requestedBeforeRoyalty > 0n, true);
+
+      const preview = combineOfferContents([nftOffer]);
+      assertEquals(preview.offeredNfts.length, 1);
+      assertEquals(preview.requestedFungible.length, 1);
+      const royalty = (requestedBeforeRoyalty * BigInt(nft.royaltyBasisPoints)) / 10000n;
+      assertEquals(preview.requestedFungible[0].mojos, requestedBeforeRoyalty + royalty);
+      assertEquals(preview.royalties.length, 1);
+      assertEquals(preview.royalties[0].amounts[0].mojos, royalty);
     });
   },
 });
