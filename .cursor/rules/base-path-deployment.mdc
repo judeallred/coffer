@@ -40,18 +40,19 @@ The HTML includes a placeholder where the base tag will be injected:
 
 **Important**: This comment MUST remain in the HTML. Do not replace it manually.
 
-### GitHub Actions Configuration
+### Deploy Configuration
 
-**File**: [.github/workflows/deploy.yml](mdc:.github/workflows/deploy.yml)
+**File**: [deno.json](mdc:deno.json)
 
-Set the BASE_PATH environment variable during build:
+The deploy target is always `/coffer/`, so the `build:deploy` task sets `BASE_PATH` itself rather
+than relying on the CI workflow to pass it:
 
-```yaml
-- name: Build project
-  run: deno task build
-  env:
-    BASE_PATH: /coffer
+```json
+"build:deploy": "BASE_PATH=/coffer deno task build && deno task deploy:tree"
 ```
+
+Keep it that way. Running `deno task build:deploy` without `BASE_PATH` produces a `deploy/coffer/`
+tree with no `<base>` tag, which looks fine locally and then 404s every asset in production.
 
 ## Usage Examples
 
@@ -61,7 +62,7 @@ deno task build
 # or explicitly:
 BASE_PATH=/ deno task build
 
-# Build for GitHub Pages
+# Build for the deployed /coffer/ prefix
 BASE_PATH=/coffer deno task build
 
 # Build for custom subdirectory
@@ -84,7 +85,7 @@ When `BASE_PATH=/` (default):
 
 1. ✅ **ALWAYS** use relative paths (e.g., `./main.js`, not `/main.js`)
 2. ✅ **ALWAYS** test both root and subdirectory builds
-3. ✅ **ALWAYS** set BASE_PATH in GitHub Actions for GitHub Pages
+3. ✅ **ALWAYS** build the deploy tree via `deno task build:deploy`, which sets BASE_PATH for you
 4. ❌ **NEVER** hardcode absolute paths in HTML or JavaScript
 5. ❌ **NEVER** remove the `<!-- BASE_PATH_PLACEHOLDER -->` comment
 6. ❌ **NEVER** manually add a `<base>` tag (let build.ts handle it)
@@ -112,10 +113,11 @@ deno test --allow-all tests/e2e/base_path_build_test.ts
 - Verify all paths in code are relative (start with `./`)
 - Ensure BASE_PATH was set during build
 
-### GitHub Pages Shows Blank Page
-- Verify BASE_PATH is set in `.github/workflows/deploy.yml`
+### Deployed Site Shows Blank Page
+- Verify the deploy tree was built with `deno task build:deploy`
 - Check browser console for 404 errors
-- Confirm the repository name matches the BASE_PATH value
+- Confirm `deploy/coffer/index.html` contains `<base href="/coffer/">`
+- Confirm the directory name under `deploy/` matches the URL prefix in the wrangler route
 
 ## Reference
 

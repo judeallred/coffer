@@ -16,7 +16,7 @@ deno task build
 # or explicitly:
 BASE_PATH=/ deno task build
 
-# Build for GitHub Pages at /coffer/
+# Build for the deployed prefix at /coffer/
 BASE_PATH=/coffer deno task build
 
 # Build for custom subdirectory
@@ -36,11 +36,6 @@ When you set `BASE_PATH`, the build process:
    - `./chia_wallet_sdk_wasm.js` → `/coffer/chia_wallet_sdk_wasm.js`
    - `./styles/global.css` → `/coffer/styles/global.css`
 
-3. **Creates `.nojekyll` file** (critical for GitHub Pages)
-   - Disables Jekyll processing which can cause 404 errors
-   - Ensures all WASM and asset files are served correctly
-   - Automatically created during every build
-
 ## Usage Examples
 
 ### Local Development
@@ -52,7 +47,7 @@ deno task dev
 # Server runs at http://localhost:8000/
 ```
 
-### Building for GitHub Pages
+### Building for Production
 
 ```bash
 BASE_PATH=/coffer deno task build
@@ -60,15 +55,13 @@ deno task serve:dist
 # Test at http://localhost:8001/ (note: base tag handles the /coffer/ path)
 ```
 
-### GitHub Actions Deployment
+### Deployment
 
-The deploy workflow automatically sets `BASE_PATH`:
+`deno task build:deploy` sets `BASE_PATH=/coffer` itself and then nests the output under
+`deploy/coffer/` for Cloudflare Workers Assets, so CI does not pass the variable in:
 
-```yaml
-- name: Build project
-  run: deno task build
-  env:
-    BASE_PATH: /coffer
+```json
+"build:deploy": "BASE_PATH=/coffer deno task build && deno task deploy:tree"
 ```
 
 ### Building for Custom Deployment
@@ -216,13 +209,17 @@ BASE_PATH=/your-production-path deno task build
 }
 ```
 
-### GitHub Pages (with custom repo name)
+### Cloudflare Workers (current)
 
-```.github/workflows/deploy.yml
-- name: Build project
-  run: deno task build
-  env:
-    BASE_PATH: /your-repo-name
+Workers Assets cannot mount a directory at a path prefix, so the output must be nested to match
+the URL. `deno task build:deploy` handles both halves:
+
+```jsonc
+// wrangler.jsonc
+{
+  "assets": { "directory": "./deploy" }, // serves deploy/coffer/* at /coffer/*
+  "routes": [{ "pattern": "xch.nyc/coffer/*", "zone_name": "xch.nyc" }]
+}
 ```
 
 ## Summary

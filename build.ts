@@ -36,7 +36,7 @@ const externalImportPlugin: esbuild.Plugin = {
       return { path: args.path, external: true };
     });
     // Image imports are handled by esbuild's file loader - don't mark as external
-    // This prevents the "module script with MIME type image/svg+xml" error on GitHub Pages
+    // This prevents the "module script with MIME type image/svg+xml" error in production
   },
 };
 
@@ -57,7 +57,7 @@ const result = await esbuild.build({
     '.ts': 'ts',
     '.tsx': 'tsx',
     // Use 'file' loader for images - copies to output and returns path as string
-    // This prevents "module script with MIME type image/svg+xml" error on GitHub Pages
+    // This prevents "module script with MIME type image/svg+xml" error in production
     '.png': 'file',
     '.jpg': 'file',
     '.jpeg': 'file',
@@ -162,15 +162,6 @@ try {
   console.log('  ✓ Copied WASM files');
 } catch (error) {
   console.warn('  ⚠ Failed to copy WASM files:', error);
-}
-
-// Create .nojekyll file to disable Jekyll processing on GitHub Pages
-// This ensures all files are served correctly without Jekyll's file filtering
-try {
-  await Deno.writeTextFile('./dist/.nojekyll', '');
-  console.log('  ✓ Created .nojekyll for GitHub Pages');
-} catch (error) {
-  console.warn('  ⚠ Failed to create .nojekyll:', error);
 }
 
 console.log('✅ Build completed successfully!');

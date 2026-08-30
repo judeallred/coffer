@@ -138,10 +138,10 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'BASE_PATH Build: Custom path (/coffer/) - GitHub Pages path',
+  name: 'BASE_PATH Build: Custom path (/coffer/) - deployed path',
   fn: async () => {
     console.log('\n' + '='.repeat(60));
-    console.log('TEST: Custom path (/coffer/) - simulating GitHub Pages');
+    console.log('TEST: Custom path (/coffer/) - simulating the deployed prefix');
     console.log('='.repeat(60));
 
     await buildWithBasePath('/coffer');
