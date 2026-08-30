@@ -30,14 +30,25 @@ export interface PreviewSide {
   nfts: PreviewNft[];
 }
 
+/**
+ * Whether the net position is all upside, all cost, or a mix. 'mixed' means the
+ * taker both pays and receives, so profitability depends on prices we don't know.
+ */
+export type ArbVerdict = 'gain' | 'cost' | 'mixed' | 'empty';
+
 export interface CombinedPreview {
+  /** Net of what the taker pays and receives, after cancellations. */
   requested: PreviewSide;
   offered: PreviewSide;
+  /** Totals before netting, for reconciling against a wallet. */
+  grossRequested: PreviewAmount[];
+  grossOffered: PreviewAmount[];
   /** Assets that cancel out between offers and never reach the taker. */
   intermediates: PreviewSide;
   royalties: Array<{ nft: PreviewNft; amounts: PreviewAmount[] }>;
   /** Maker fee in XCH, omitted when zero. */
   fee: string | null;
+  verdict: ArbVerdict;
 }
 
 interface NftMetadata {
@@ -162,15 +173,29 @@ export function buildCombinedPreview(
     return null;
   }
 
+  const paysNothing = isEmptySide(requested);
+  const receivesNothing = isEmptySide(offered);
+  let verdict: ArbVerdict = 'mixed';
+  if (paysNothing && receivesNothing) {
+    verdict = 'empty';
+  } else if (paysNothing) {
+    verdict = 'gain';
+  } else if (receivesNothing) {
+    verdict = 'cost';
+  }
+
   return {
     requested,
     offered,
+    grossRequested: contents.grossRequestedFungible.map((a) => toPreviewAmount(a, index)),
+    grossOffered: contents.grossOfferedFungible.map((a) => toPreviewAmount(a, index)),
     intermediates,
     royalties: contents.royalties.map((charge) => ({
       nft: toPreviewNft(charge.nft, index),
       amounts: charge.amounts.map((amount) => toPreviewAmount(amount, index)),
     })),
     fee: contents.fee > 0n ? formatMojos(XCH_KEY, contents.fee) : null,
+    verdict,
   };
 }
 

@@ -124,6 +124,23 @@ Deno.test('combineOfferContents', async (t) => {
     assertEquals(formatMojos(XCH_KEY, combined.requestedFungible[0].mojos), '2');
     assertEquals(combined.offeredFungible.length, 0);
     assertEquals(formatMojos(XCH_KEY, combined.intermediateFungible[0].mojos), '1');
+    // Gross keeps both sides intact so the totals reconcile with a wallet.
+    assertEquals(formatMojos(XCH_KEY, combined.grossRequestedFungible[0].mojos), '3');
+    assertEquals(formatMojos(XCH_KEY, combined.grossOfferedFungible[0].mojos), '1');
+  });
+
+  await t.step('nets to a pure gain when offers cover more than they ask for', () => {
+    // Mirrors the 65-offer arb case: every asset comes back with a surplus.
+    const a = emptyContents();
+    a.requestedFungible.set(XCH_KEY, xch(5));
+    const b = emptyContents();
+    b.offeredFungible.set(XCH_KEY, xch(6));
+
+    const combined = combineOfferContents([a, b]);
+    assertEquals(combined.requestedFungible.length, 0);
+    assertEquals(formatMojos(XCH_KEY, combined.offeredFungible[0].mojos), '1');
+    assertEquals(formatMojos(XCH_KEY, combined.grossRequestedFungible[0].mojos), '5');
+    assertEquals(formatMojos(XCH_KEY, combined.grossOfferedFungible[0].mojos), '6');
   });
 
   await t.step('reports an NFT on both sides as an intermediate', () => {
@@ -253,6 +270,48 @@ Deno.test('buildCombinedPreview', async (t) => {
 
     const unlabeled = buildCombinedPreview(combineOfferContents([offer]), []);
     assertEquals(unlabeled!.requested.amounts[0].code.startsWith('CAT '), true);
+  });
+
+  await t.step('reports a gain verdict and gross totals for an arb', () => {
+    const pays = emptyContents();
+    pays.requestedFungible.set(XCH_KEY, xch(5));
+    const receives = emptyContents();
+    receives.offeredFungible.set(XCH_KEY, xch(6));
+
+    const preview = buildCombinedPreview(combineOfferContents([pays, receives]), [])!;
+    assertEquals(preview.verdict, 'gain');
+    assertEquals(preview.requested.amounts.length, 0);
+    assertEquals(preview.offered.amounts[0].amount, '1');
+    assertEquals(preview.grossRequested[0].amount, '5');
+    assertEquals(preview.grossOffered[0].amount, '6');
+  });
+
+  await t.step('reports a cost verdict when nothing comes back', () => {
+    const offer = emptyContents();
+    offer.requestedFungible.set(XCH_KEY, MOJOS_PER_XCH);
+
+    const preview = buildCombinedPreview(combineOfferContents([offer]), [])!;
+    assertEquals(preview.verdict, 'cost');
+    assertEquals(preview.offered.amounts.length, 0);
+  });
+
+  await t.step('reports mixed when the taker both pays and receives', () => {
+    const offer = emptyContents();
+    offer.requestedFungible.set(XCH_KEY, MOJOS_PER_XCH);
+    offer.offeredFungible.set('cat:abcd', 5_000n);
+
+    const preview = buildCombinedPreview(combineOfferContents([offer]), [])!;
+    assertEquals(preview.verdict, 'mixed');
+  });
+
+  await t.step('folds royalties into the gross requested total', () => {
+    const offer = emptyContents();
+    offer.requestedFungible.set(XCH_KEY, MOJOS_PER_XCH);
+    offer.offeredNfts.set(launcher, nft(launcher, 1000));
+
+    const preview = buildCombinedPreview(combineOfferContents([offer]), [])!;
+    assertEquals(preview.requested.amounts[0].amount, '1.1');
+    assertEquals(preview.grossRequested[0].amount, '1.1');
   });
 
   await t.step('surfaces the maker fee only when non-zero', () => {

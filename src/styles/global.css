@@ -951,6 +951,24 @@ body {
   color: var(--color-text-light);
 }
 
+.combined-preview-verdict {
+  margin: var(--spacing-sm) 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.combined-preview-verdict.gain {
+  color: var(--color-primary);
+}
+
+.combined-preview-verdict.cost {
+  color: var(--color-text-light);
+}
+
+.dexie-item.empty {
+  color: var(--color-text-light);
+}
+
 .royalty-breakdown {
   margin-top: var(--spacing-md);
   padding-top: var(--spacing-sm);

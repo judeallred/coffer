@@ -74,13 +74,17 @@ function renderPreviewAmount(amount: PreviewAmount, idx: number): JSX.Element {
   );
 }
 
-function renderSide(label: string, side: PreviewSide): JSX.Element | null {
-  if (side.amounts.length === 0 && side.nfts.length === 0) return null;
+function renderSide(label: string, side: PreviewSide): JSX.Element {
+  const isEmpty = side.amounts.length === 0 && side.nfts.length === 0;
   return (
     <div className='dexie-info-box'>
       <span className='dexie-section-label'>{label}</span>
-      {side.amounts.map(renderPreviewAmount)}
-      {side.nfts.map(renderPreviewNft)}
+      {isEmpty ? <div className='dexie-item dexie-asset-item empty'>• nothing</div> : (
+        <>
+          {side.amounts.map(renderPreviewAmount)}
+          {side.nfts.map(renderPreviewNft)}
+        </>
+      )}
     </div>
   );
 }
@@ -394,13 +398,24 @@ export function SimpleCombinedOutput({
             <div className='combined-preview-header'>
               <img src={dexieDuckLogo} alt='dexie' className='dexie-logo' />
               <span className='combined-preview-title'>Combined preview</span>
-              <span className='combined-preview-note'>from the combined offer</span>
+              <span className='combined-preview-note'>net, from the combined offer</span>
             </div>
 
             <div className='dexie-info-boxes'>
-              {renderSide('Requested:', preview.requested)}
-              {renderSide('Offered:', preview.offered)}
+              {renderSide('You pay (net):', preview.requested)}
+              {renderSide('You receive (net):', preview.offered)}
             </div>
+
+            {preview.verdict === 'gain' && (
+              <p className='combined-preview-verdict gain'>
+                Nets out in your favor — nothing left to pay.
+              </p>
+            )}
+            {preview.verdict === 'cost' && (
+              <p className='combined-preview-verdict cost'>
+                Nets out as a cost — you receive nothing back.
+              </p>
+            )}
 
             {preview.royalties.length > 0 && (
               <div className='royalty-breakdown'>
@@ -431,16 +446,28 @@ export function SimpleCombinedOutput({
               </div>
             )}
 
-            {(preview.intermediates.amounts.length > 0 ||
-              preview.intermediates.nfts.length > 0) && (
+            {(preview.grossRequested.length > 0 || preview.grossOffered.length > 0) && (
               <div className='royalty-breakdown'>
-                <span className='dexie-section-label'>Cancels out between offers:</span>
+                <span className='dexie-section-label'>Gross, before netting:</span>
                 <ul className='royalty-breakdown-list'>
-                  {preview.intermediates.amounts.map((amount, idx) => (
-                    <li key={`i-amt-${idx}`}>
-                      {amount.amount} {amount.code}
-                    </li>
-                  ))}
+                  {preview.grossRequested.length > 0 && (
+                    <li>Pays {amountListText(preview.grossRequested)}</li>
+                  )}
+                  {preview.grossOffered.length > 0 && (
+                    <li>Receives {amountListText(preview.grossOffered)}</li>
+                  )}
+                </ul>
+                <p className='combined-preview-note'>
+                  What a wallet shows. You need the gross amount on hand even though the offer
+                  returns most of it.
+                </p>
+              </div>
+            )}
+
+            {preview.intermediates.nfts.length > 0 && (
+              <div className='royalty-breakdown'>
+                <span className='dexie-section-label'>Passes through:</span>
+                <ul className='royalty-breakdown-list'>
                   {preview.intermediates.nfts.map((nft, idx) => (
                     <li key={`i-nft-${idx}`}>
                       {nft.nftId
@@ -458,9 +485,6 @@ export function SimpleCombinedOutput({
                     </li>
                   ))}
                 </ul>
-                <p className='combined-preview-note'>
-                  Passes through the combined offer without reaching the taker.
-                </p>
               </div>
             )}
 

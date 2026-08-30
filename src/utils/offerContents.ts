@@ -39,15 +39,18 @@ export interface RoyaltyCharge {
 }
 
 export interface CombinedContents {
-  /** What the taker pays, royalties already folded in. */
+  /** Net amount the taker pays, royalties already folded in. */
   requestedFungible: FungibleAmount[];
   requestedNfts: NftAsset[];
-  /** What the taker receives. */
+  /** Net amount the taker receives. */
   offeredFungible: FungibleAmount[];
   offeredNfts: NftAsset[];
   /** Cancelled between offers, so it never reaches the taker. */
   intermediateFungible: FungibleAmount[];
   intermediateNfts: NftAsset[];
+  /** Totals before netting, matching what a wallet displays. */
+  grossRequestedFungible: FungibleAmount[];
+  grossOfferedFungible: FungibleAmount[];
   royalties: RoyaltyCharge[];
   fee: bigint;
 }
@@ -190,7 +193,18 @@ export function combineOfferContents(offers: OfferContents[]): CombinedContents 
     for (const amount of requestedFungible) {
       amount.mojos += royaltyTotals.get(amount.key) ?? 0n;
     }
+    // Royalties are real payments, so they belong in the gross total too.
+    for (const [key, mojos] of royaltyTotals) {
+      addTo(grossRequested, key, mojos);
+    }
   }
+
+  const toAmounts = (totals: Map<string, bigint>): FungibleAmount[] =>
+    sortAmounts(
+      [...totals]
+        .filter(([, mojos]) => mojos > 0n)
+        .map(([key, mojos]) => amountOf(key, mojos)),
+    );
 
   return {
     requestedFungible: sortAmounts(requestedFungible),
@@ -199,6 +213,8 @@ export function combineOfferContents(offers: OfferContents[]): CombinedContents 
     offeredNfts,
     intermediateFungible: sortAmounts(intermediateFungible),
     intermediateNfts,
+    grossRequestedFungible: toAmounts(grossRequested),
+    grossOfferedFungible: toAmounts(grossOffered),
     royalties,
     fee,
   };
