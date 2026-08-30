@@ -1,7 +1,11 @@
 # Build output
 dist/
+deploy/
 build/
 *.js.map
+
+# Wrangler local state
+.wrangler/
 
 # Dependencies
 node_modules/

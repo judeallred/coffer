@@ -77,7 +77,7 @@ This project is implemented as a single-page static client side website. It uses
 ## Deployment
 
 - Builds to static files for flexible deployment options
-- Support for GitHub Pages deployment
+- Deployed to <https://xch.nyc/coffer/> on Cloudflare Workers (see [DEPLOYMENT.md](DEPLOYMENT.md))
 - Support for custom domain deployment
 
 ## Debug Mode

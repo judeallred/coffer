@@ -108,12 +108,22 @@ Both environments now use **identical import paths**:
 5. ✅ Test locally: `deno task serve:dist`
 6. ✅ Deploy `dist/` folder to your hosting provider
 
-## Hosting Recommendations
+## Hosting
 
-### GitHub Pages
+### Cloudflare Workers (current)
 
-- Deploy `dist/` folder
-- Already configured in `.github/workflows/deploy.yml`
+Coffer is served at `https://xch.nyc/coffer/` by an assets-only Worker, configured in
+`wrangler.jsonc` and deployed by `.github/workflows/deploy-cloudflare.yml` on push to `main`.
+
+Workers Assets cannot mount a directory at a path prefix, so the build output is nested to
+match the URL prefix: `deno task build:deploy` produces `deploy/coffer/` from `dist/`, and
+Wrangler serves `./deploy`. Requires the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
+repo secrets.
+
+The `xch.nyc/coffer/*` route takes precedence over the `xch.nyc` custom domain owned by the
+separate xch-nyc landing-page Worker, which keeps serving every other path.
+
+## Other Hosting Options
 
 ### Netlify
 

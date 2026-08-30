@@ -1,0 +1,30 @@
+{
+  "name": "coffer",
+  "compatibility_date": "2026-08-30",
+  // Assets-only Worker: no `main` entrypoint, Cloudflare just serves the tree.
+  // Workers Assets cannot mount a directory at a path prefix, so the deploy tree
+  // nests the build output under `coffer/` to match the `/coffer/` URL prefix.
+  // Build it with `deno task build:deploy`.
+  //
+  // `not_found_handling` is deliberately unset: the build emits no 404.html, and
+  // pointing it at a missing file would be worse than the default bare 404.
+  "assets": {
+    "directory": "./deploy"
+  },
+  // Plain routes, NOT custom domains. A more specific route wins over the
+  // `xch.nyc` custom domain held by the xch-nyc landing-page Worker, so that
+  // Worker keeps serving everything outside /coffer. Using `custom_domain: true`
+  // here would instead try to seize the whole apex and collide with it.
+  //
+  // Both patterns are needed: `/coffer/*` does not match a bare `/coffer`.
+  "routes": [
+    { "pattern": "xch.nyc/coffer/*", "zone_name": "xch.nyc" },
+    { "pattern": "xch.nyc/coffer", "zone_name": "xch.nyc" }
+  ],
+  // Off by default once routes exist; stated explicitly so the app is reachable
+  // only at xch.nyc rather than also at a workers.dev address.
+  "workers_dev": false,
+  "observability": {
+    "enabled": true
+  }
+}

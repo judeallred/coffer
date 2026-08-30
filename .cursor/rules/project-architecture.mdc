@@ -12,7 +12,7 @@ alwaysApply: true
 - **Styling**: CSS with custom properties (no CSS-in-JS)
 - **Build**: esbuild
 - **Testing**: Deno test + Puppeteer for e2e
-- **Deployment**: GitHub Pages
+- **Deployment**: Cloudflare Workers (static assets)
 
 ## Project Structure
 
@@ -120,9 +120,14 @@ Caching is implemented in [src/utils/offerUtils.ts](mdc:src/utils/offerUtils.ts)
 
 ## Deployment
 
-- **GitHub Pages**: Deployed to `https://judeallred.github.io/coffer/`
+- **Cloudflare Workers**: Deployed to `https://xch.nyc/coffer/`
 - **BASE_PATH**: Set in GitHub Actions to `/coffer`
-- **Workflow**: [.github/workflows/deploy.yml](mdc:.github/workflows/deploy.yml)
+- **Workflow**: [.github/workflows/deploy-cloudflare.yml](mdc:.github/workflows/deploy-cloudflare.yml)
+- **Wrangler config**: [wrangler.jsonc](mdc:wrangler.jsonc)
+- **Assets layout**: Workers Assets cannot mount a directory at a path prefix, so
+  `deno task build:deploy` copies `dist/` to `deploy/coffer/` and Wrangler serves `./deploy`.
+  The `xch.nyc/coffer/*` route wins over the `xch.nyc` custom domain held by the separate
+  xch-nyc landing-page Worker.
 
 ## Development Commands
 

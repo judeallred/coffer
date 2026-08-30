@@ -24,6 +24,8 @@
     "fmt": "deno task format",
     "dev": "deno run --allow-net --allow-read --allow-write --allow-env --allow-run --watch dev.ts",
     "build": "deno run --allow-all build.ts",
+    "build:deploy": "BASE_PATH=/coffer deno task build && deno task deploy:tree",
+    "deploy:tree": "rm -rf deploy && mkdir -p deploy && cp -r dist deploy/coffer",
     "serve:dist": "deno run --allow-net --allow-read https://deno.land/std@0.208.0/http/file_server.ts --port 8001 dist",
     "test": "deno test --allow-all tests/smoke_test.ts tests/integration/ tests/performance_test.ts",
     "test:smoke": "deno test --allow-all tests/smoke_test.ts",

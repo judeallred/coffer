@@ -1,7 +1,7 @@
 /// <reference lib="deno.ns" />
 
 /**
- * E2E test for GitHub Pages deployment
+ * E2E test for the deployed site
  * Tests the actual deployed site to catch production issues
  */
 
@@ -9,18 +9,17 @@ import { assert, assertEquals } from 'https://deno.land/std@0.208.0/testing/asse
 import { chromium } from 'npm:playwright@1.45.0';
 import type { Browser, Page } from 'npm:playwright@1.45.0';
 
-// GitHub Pages URL - can be overridden via environment variable
-const GITHUB_PAGES_URL = Deno.env.get('GITHUB_PAGES_URL') ||
-  'https://judeallred.github.io/coffer/';
+// Deployed site URL - can be overridden via environment variable
+const DEPLOY_URL = Deno.env.get('DEPLOY_URL') || 'https://xch.nyc/coffer/';
 
 Deno.test({
-  name: 'E2E: GitHub Pages should load without module import errors',
+  name: 'E2E: Deployed site should load without module import errors',
   fn: async (t: Deno.TestContext) => {
     let browser: Browser | null = null;
     let page: Page | null = null;
 
     try {
-      console.log(`🌐 Testing GitHub Pages at: ${GITHUB_PAGES_URL}`);
+      console.log(`🌐 Testing deployed site at: ${DEPLOY_URL}`);
       browser = await chromium.launch({ headless: true });
       page = await browser.newPage();
 
@@ -49,14 +48,14 @@ Deno.test({
         }
       });
 
-      await t.step('Should load GitHub Pages without errors', async () => {
-        const response = await page!.goto(GITHUB_PAGES_URL, {
+      await t.step('Should load the deployed site without errors', async () => {
+        const response = await page!.goto(DEPLOY_URL, {
           waitUntil: 'networkidle',
           timeout: 30000,
         });
 
-        assert(response !== null, 'Should get response from GitHub Pages');
-        assert(response.ok(), `GitHub Pages should load (status: ${response.status()})`);
+        assert(response !== null, 'Should get response from the deployed site');
+        assert(response.ok(), `Deployed site should load (status: ${response.status()})`);
         console.log(`✅ Page loaded with status: ${response.status()}`);
       });
 
@@ -167,9 +166,9 @@ Deno.test({
         console.log('✅ No critical JavaScript errors');
       });
 
-      console.log('✅ All GitHub Pages e2e tests passed!');
+      console.log('✅ All deployed site e2e tests passed!');
     } catch (error) {
-      console.error('❌ GitHub Pages e2e test failed:', error);
+      console.error('❌ Deployed site e2e test failed:', error);
       throw error;
     } finally {
       if (page) await page.close();
@@ -182,12 +181,12 @@ Deno.test({
 
 // Test with local build to catch issues before deployment
 Deno.test({
-  name: 'E2E: Local build should work like GitHub Pages',
+  name: 'E2E: Local build should work like the deployed site',
   fn: async (t: Deno.TestContext) => {
     let browser: Browser | null = null;
     let page: Page | null = null;
 
-    // Build with BASE_PATH to simulate GitHub Pages
+    // Build with BASE_PATH to simulate the deployed /coffer/ prefix
     console.log('🔨 Building with BASE_PATH=/coffer...');
     const buildCmd = new Deno.Command('deno', {
       args: ['task', 'build'],
@@ -238,7 +237,7 @@ Deno.test({
         assertEquals(
           svgModuleErrors.length,
           0,
-          `Local build should not have SVG module errors. This means it will fail on GitHub Pages too! Errors: ${
+          `Local build should not have SVG module errors. This means it will fail in production too! Errors: ${
             svgModuleErrors.join(' | ')
           }`,
         );

@@ -1,0 +1,133 @@
+name: Deploy to Cloudflare
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudflare-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install Deno dependencies
+        run: deno install
+
+      - name: Run linter
+        run: deno task lint
+
+      - name: Run integration tests
+        run: deno task test:integration
+
+      # Emits dist/ with BASE_PATH=/coffer, then the deploy/ tree that nests it
+      # under coffer/ so Workers Assets can serve it at the /coffer/ URL prefix.
+      - name: Build deploy tree
+        run: deno task build:deploy
+
+      - name: Upload deploy tree
+        uses: actions/upload-artifact@v7
+        with:
+          name: deploy
+          path: deploy
+          include-hidden-files: true
+          retention-days: 7
+
+  deploy:
+    name: Deploy
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Download deploy tree
+        uses: actions/download-artifact@v8
+        with:
+          name: deploy
+          path: deploy
+
+      # Pinned Wrangler 4 rather than cloudflare/wrangler-action, whose bundled
+      # v3 predates assets-only Workers and fails with "Missing entry-point".
+      - name: Deploy to Cloudflare Workers
+        run: npx --yes wrangler@4.127.1 deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  verify:
+    name: Verify Deployment
+    needs: deploy
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install Playwright browsers
+        run: npx --yes playwright@1.45.0 install --with-deps chromium
+
+      - name: Wait for the deployment to propagate
+        run: sleep 15
+
+      - name: Run e2e tests against the deployed site
+        run: 'deno test --allow-all tests/e2e/deployed_site_test.ts --filter="E2E: Deployed site"'
+        env:
+          DEPLOY_URL: https://xch.nyc/coffer/
+
+      # The apex and www must keep resolving to the xch-nyc landing-page Worker.
+      # A `/coffer/*` route should never capture them.
+      - name: Check the landing page was not captured
+        run: |
+          set -euo pipefail
+          for host in https://xch.nyc/ https://www.xch.nyc/; do
+            body=$(curl -fsS "$host")
+            if grep -qi 'Coffer - Combine Offers' <<<"$body"; then
+              echo "::error::$host is serving Coffer; the route captured the landing page"
+              exit 1
+            fi
+            echo "OK: $host still serves the landing page"
+          done
+
+      - name: Check /coffer resolves without a trailing slash
+        run: |
+          set -euo pipefail
+          code=$(curl -s -o /dev/null -w '%{http_code}' -L https://xch.nyc/coffer)
+          test "$code" = "200" || { echo "::error::/coffer returned $code"; exit 1; }
+          echo "OK: /coffer resolves"
+
+      - name: Check the WASM content type
+        run: |
+          set -euo pipefail
+          ct=$(curl -s -o /dev/null -w '%{content_type}' https://xch.nyc/coffer/chia_wallet_sdk_wasm_bg.wasm)
+          test "$ct" = "application/wasm" || { echo "::error::wasm served as '$ct'"; exit 1; }
+          echo "OK: wasm served as application/wasm"
