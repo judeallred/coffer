@@ -5,6 +5,7 @@
     "jsr:@std/fmt@~0.218.2": "0.218.2",
     "npm:chia-wallet-sdk-wasm@0.29": "0.29.0",
     "npm:esbuild@0.19.12": "0.19.12",
+    "npm:playwright@1.59.1": "1.59.1",
     "npm:preact@10.19.2": "10.19.2"
   },
   "jsr": {
@@ -165,6 +166,25 @@
         "@esbuild/win32-x64"
       ],
       "scripts": true,
+      "bin": true
+    },
+    "fsevents@2.3.2": {
+      "integrity": "sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==",
+      "os": ["darwin"],
+      "scripts": true
+    },
+    "playwright-core@1.59.1": {
+      "integrity": "sha512-HBV/RJg81z5BiiZ9yPzIiClYV/QMsDCKUyogwH9p3MCP6IYjUFu/MActgYAvK0oWyV9NlwM3GLBjADyWgydVyg==",
+      "bin": true
+    },
+    "playwright@1.59.1": {
+      "integrity": "sha512-C8oWjPR3F81yljW9o5OxcWzfh6avkVwDD2VYdwIGqTkl+OGFISgypqzfu7dOe4QNLL2aqcWBmI3PMtLIK233lw==",
+      "dependencies": [
+        "playwright-core"
+      ],
+      "optionalDependencies": [
+        "fsevents"
+      ],
       "bin": true
     },
     "preact@10.19.2": {

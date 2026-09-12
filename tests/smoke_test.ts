@@ -1,6 +1,6 @@
 /// <reference lib="deno.ns" />
 import { assert } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
-import { type Browser, chromium, type Page } from 'npm:playwright@1.45.0';
+import { type Browser, chromium, type Page } from 'npm:playwright@1.59.1';
 import { killProcess, startFileServer } from './test_utils.ts';
 
 /**

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useCallback, useEffect, useState } from 'preact/hooks';
 import { Header } from './Header.tsx';
 import { SimpleOfferInputs } from './SimpleOfferInputs.tsx';
 import { SimpleCombinedOutput } from './SimpleCombinedOutput.tsx';
@@ -200,15 +200,18 @@ export function App(): JSX.Element {
     logError('All offers cleared', 'info');
   };
 
-  const logError = (message: string, type: 'error' | 'warning' | 'info' = 'error'): void => {
-    const newLog = {
-      id: Date.now().toString(),
-      message,
-      timestamp: new Date(),
-      type,
-    };
-    setErrorLogs((prev) => [...prev, newLog]);
-  };
+  const logError = useCallback(
+    (message: string, type: 'error' | 'warning' | 'info' = 'error'): void => {
+      const newLog = {
+        id: Date.now().toString(),
+        message,
+        timestamp: new Date(),
+        type,
+      };
+      setErrorLogs((prev) => [...prev, newLog]);
+    },
+    [],
+  );
 
   const clearLogs = (): void => {
     setErrorLogs([]);

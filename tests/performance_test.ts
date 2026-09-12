@@ -8,8 +8,9 @@
  */
 
 import { assert } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
-import { chromium } from 'npm:playwright@1.45.0';
-import type { Browser, Page } from 'npm:playwright@1.45.0';
+import { chromium } from 'npm:playwright@1.59.1';
+import type { Browser, Page } from 'npm:playwright@1.59.1';
+import { TEST_OFFER_1, TEST_OFFER_2 } from './fixtures/offers.ts';
 import { killProcess, startFileServer } from './test_utils.ts';
 
 Deno.test({
@@ -91,6 +92,61 @@ Deno.test({
         );
 
         console.log('✅ Page remains responsive');
+      });
+
+      await t.step('Coinset warnings should not restart offer generation', async () => {
+        assert(page !== null, 'Page should be initialized');
+
+        let twoOfferCombinationCount = 0;
+        page.on('console', (message) => {
+          if (message.text().includes('Combining 2 offers')) {
+            twoOfferCombinationCount++;
+          }
+        });
+
+        await page.route('**/*', async (route) => {
+          if (route.request().url().toLowerCase().includes('coinset')) {
+            await route.fulfill({
+              status: 503,
+              contentType: 'application/json',
+              body: JSON.stringify({ error: 'Simulated Coinset outage' }),
+            });
+            return;
+          }
+          await route.continue();
+        });
+
+        const input = page.locator('.offer-input');
+        await input.evaluate((element, pastedOffers) => {
+          const clipboard = new DataTransfer();
+          clipboard.setData('text/plain', pastedOffers);
+          element.dispatchEvent(
+            new ClipboardEvent('paste', {
+              bubbles: true,
+              cancelable: true,
+              clipboardData: clipboard,
+            }),
+          );
+        }, `${TEST_OFFER_1} ${TEST_OFFER_2}`);
+
+        await page.waitForFunction(
+          () => document.querySelector('.output-status')?.textContent?.includes('Ready (2 offers)'),
+          undefined,
+          { timeout: 10000 },
+        );
+        await page.waitForSelector('.chain-verification.warning', { timeout: 10000 });
+
+        // Give a callback-driven feedback loop enough time to restart the effect.
+        await page.waitForTimeout(1000);
+
+        assert(
+          twoOfferCombinationCount === 1,
+          `Expected one two-offer combination, observed ${twoOfferCombinationCount}`,
+        );
+        assert(
+          (await page.locator('.output-status').textContent())?.includes('Ready (2 offers)'),
+          'Combined offer status should remain ready after a Coinset warning',
+        );
       });
 
       await t.step('Memory usage should be stable', async () => {

@@ -11,8 +11,8 @@
  */
 
 import { assert } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
-import { chromium } from 'npm:playwright@1.45.0';
-import type { Browser, Page } from 'npm:playwright@1.45.0';
+import { chromium } from 'npm:playwright@1.59.1';
+import type { Browser, Page } from 'npm:playwright@1.59.1';
 
 Deno.test({
   name: 'Dexie Freeze Test: Reproduce freeze with specific Dexie offer URLs',
