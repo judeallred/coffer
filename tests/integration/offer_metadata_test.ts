@@ -9,6 +9,7 @@ import {
   combineOfferContents,
   formatMojos,
   MOJOS_PER_XCH,
+  royaltyForTradePrices,
   XCH_KEY,
 } from '../../src/utils/offerContents.ts';
 import type { NftAsset, OfferContents } from '../../src/utils/offerContents.ts';
@@ -20,8 +21,18 @@ function emptyContents(): OfferContents {
     requestedNfts: new Map(),
     offeredFungible: new Map(),
     offeredNfts: new Map(),
+    royalties: [],
     fee: 0n,
   };
+}
+
+/** Charge each offered NFT's royalty on the trade price its spend commits to. */
+function tradedAt(contents: OfferContents, key: string, mojos: bigint): OfferContents {
+  for (const asset of contents.offeredNfts.values()) {
+    const charge = royaltyForTradePrices(asset, new Map([[key, mojos]]));
+    if (charge) contents.royalties.push(charge);
+  }
+  return contents;
 }
 
 function nft(launcherId: string, royaltyBasisPoints = 0): NftAsset {
@@ -92,25 +103,45 @@ Deno.test('combineOfferContents', async (t) => {
     assertEquals(formatMojos(XCH_KEY, combined.requestedFungible[0].mojos), '2');
   });
 
-  await t.step('reproduces the Sage-verified case: 0.9 + 0.1 XCH plus 10% royalty', () => {
+  await t.step('charges royalty on the NFT offer’s own price, not the combined total', () => {
     // Offer 1 asks for 0.1 XCH and pays a 0.00001 XCH maker fee.
     const first = emptyContents();
     first.requestedFungible.set(XCH_KEY, MOJOS_PER_XCH / 10n);
     first.fee = 10_000_000n;
 
-    // Offer 2 offers a 10% royalty NFT for 0.9 XCH.
+    // Offer 2 offers a 10% royalty NFT for 0.9 XCH. Its spend commits to a 0.9
+    // XCH trade price, so the chain asserts a 0.09 XCH royalty.
     const second = emptyContents();
     second.requestedFungible.set(XCH_KEY, (9n * MOJOS_PER_XCH) / 10n);
     second.offeredNfts.set('aa', nft('aa', 1000));
+    tradedAt(second, XCH_KEY, (9n * MOJOS_PER_XCH) / 10n);
 
     const combined = combineOfferContents([first, second]);
 
     assertEquals(combined.requestedFungible.length, 1);
-    assertEquals(formatMojos(XCH_KEY, combined.requestedFungible[0].mojos), '1.1');
+    assertEquals(formatMojos(XCH_KEY, combined.requestedFungible[0].mojos), '1.09');
     assertEquals(combined.offeredNfts.length, 1);
     assertEquals(combined.royalties.length, 1);
-    assertEquals(formatMojos(XCH_KEY, combined.royalties[0].amounts[0].mojos), '0.1');
+    assertEquals(formatMojos(XCH_KEY, combined.royalties[0].amounts[0].mojos), '0.09');
     assertEquals(formatMojos(XCH_KEY, combined.fee), '0.00001');
+  });
+
+  await t.step('still charges royalty on an NFT that passes through', () => {
+    // Sell a 3% NFT for 10, buy it back for 100: the taker keeps 100 - 10 - 0.3.
+    const sell = emptyContents();
+    sell.requestedFungible.set('cat:abcd', 10_000n);
+    sell.offeredNfts.set('mid', nft('mid', 300));
+    tradedAt(sell, 'cat:abcd', 10_000n);
+    const buy = emptyContents();
+    buy.offeredFungible.set('cat:abcd', 100_000n);
+    buy.requestedNfts.set('mid', nft('mid', 300));
+
+    const combined = combineOfferContents([sell, buy]);
+    assertEquals(combined.intermediateNfts.length, 1);
+    assertEquals(combined.requestedFungible.length, 0);
+    assertEquals(formatMojos('cat:abcd', combined.offeredFungible[0].mojos), '89.7');
+    assertEquals(formatMojos('cat:abcd', combined.royalties[0].amounts[0].mojos), '0.3');
+    assertEquals(formatMojos('cat:abcd', combined.grossRequestedFungible[0].mojos), '10.3');
   });
 
   await t.step('nets an asset offered by one offer and requested by another', () => {
@@ -156,14 +187,14 @@ Deno.test('combineOfferContents', async (t) => {
     assertEquals(combined.intermediateNfts[0].launcherId, 'mid');
   });
 
-  await t.step('splits the royalty base across multiple royalty NFTs', () => {
+  await t.step('sums royalties from several NFTs in one offer', () => {
+    // The maker's wallet split the 2 XCH price into a 1 XCH trade price per NFT.
     const a = emptyContents();
     a.requestedFungible.set(XCH_KEY, xch(2));
     a.offeredNfts.set('one', nft('one', 1000));
     a.offeredNfts.set('two', nft('two', 1000));
 
-    const combined = combineOfferContents([a]);
-    // 10% of 1 XCH each, so 2.2 XCH total rather than 2.4.
+    const combined = combineOfferContents([tradedAt(a, XCH_KEY, xch(1))]);
     assertEquals(combined.royalties.length, 2);
     assertEquals(formatMojos(XCH_KEY, combined.royalties[0].amounts[0].mojos), '0.1');
     assertEquals(formatMojos(XCH_KEY, combined.requestedFungible[0].mojos), '2.2');
@@ -174,18 +205,18 @@ Deno.test('combineOfferContents', async (t) => {
     offer.requestedFungible.set(XCH_KEY, 200_000n * MOJOS_PER_XCH);
     offer.offeredNfts.set('warbear', nft('warbear', 500));
 
-    const combined = combineOfferContents([offer]);
+    const combined = combineOfferContents([tradedAt(offer, XCH_KEY, 200_000n * MOJOS_PER_XCH)]);
     assertEquals(formatMojos(XCH_KEY, combined.requestedFungible[0].mojos), '210000');
     assertEquals(combined.offeredNfts.length, 1);
     assertEquals(formatMojos(XCH_KEY, combined.royalties[0].amounts[0].mojos), '10000');
   });
 
-  await t.step('charges no royalty when nothing fungible is requested', () => {
-    const a = emptyContents();
-    a.offeredNfts.set('one', nft('one', 1000));
-
-    const combined = combineOfferContents([a]);
-    assertEquals(combined.royalties.length, 0);
+  await t.step('rounds royalties down and drops ones that round to zero', () => {
+    const asset = nft('one', 300);
+    const charge = royaltyForTradePrices(asset, new Map([['cat:abcd', 10_033n]]));
+    assertEquals(charge!.amounts[0].mojos, 300n);
+    assertEquals(royaltyForTradePrices(asset, new Map([['cat:abcd', 33n]])), null);
+    assertEquals(royaltyForTradePrices(nft('free'), new Map([[XCH_KEY, xch(1)]])), null);
   });
 });
 
@@ -201,7 +232,10 @@ Deno.test('buildCombinedPreview', async (t) => {
     offer.requestedFungible.set(XCH_KEY, MOJOS_PER_XCH);
     offer.offeredNfts.set(launcher, nft(launcher, 1000));
 
-    const preview = buildCombinedPreview(combineOfferContents([offer]), []);
+    const preview = buildCombinedPreview(
+      combineOfferContents([tradedAt(offer, XCH_KEY, MOJOS_PER_XCH)]),
+      [],
+    );
     assertEquals(preview !== null, true);
     assertEquals(preview!.requested.amounts[0].code, 'XCH');
     assertEquals(preview!.requested.amounts[0].amount, '1.1');
@@ -320,7 +354,10 @@ Deno.test('buildCombinedPreview', async (t) => {
     offer.requestedFungible.set(XCH_KEY, MOJOS_PER_XCH);
     offer.offeredNfts.set(launcher, nft(launcher, 1000));
 
-    const preview = buildCombinedPreview(combineOfferContents([offer]), [])!;
+    const preview = buildCombinedPreview(
+      combineOfferContents([tradedAt(offer, XCH_KEY, MOJOS_PER_XCH)]),
+      [],
+    )!;
     assertEquals(preview.requested.amounts[0].amount, '1.1');
     assertEquals(preview.grossRequested[0].amount, '1.1');
   });

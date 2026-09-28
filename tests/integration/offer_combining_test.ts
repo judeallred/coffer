@@ -2,12 +2,18 @@
 import { assertEquals, assertExists } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 import {
   combineOffers,
+  extractOfferedCoinIds,
   initWalletSDK,
   isWalletSDKInitialized,
   parseOfferContents,
 } from '../../src/services/walletSDK.ts';
 import { combineOfferContents, XCH_KEY } from '../../src/utils/offerContents.ts';
-import { TEST_OFFER_1, TEST_OFFER_2 } from '../fixtures/offers.ts';
+import {
+  NFT_ARB_BUY_OFFER,
+  NFT_ARB_SELL_OFFER,
+  TEST_OFFER_1,
+  TEST_OFFER_2,
+} from '../fixtures/offers.ts';
 
 /**
  * Integration test for offer combining functionality using proper SpendBundle aggregation
@@ -223,6 +229,33 @@ Deno.test({
       assertEquals(preview.requestedFungible[0].mojos, requestedBeforeRoyalty + royalty);
       assertEquals(preview.royalties.length, 1);
       assertEquals(preview.royalties[0].amounts[0].mojos, royalty);
+    });
+  },
+});
+
+Deno.test({
+  name: 'NFT Arb Integration Test',
+  fn: async (t: Deno.TestContext) => {
+    await initWalletSDK();
+
+    await t.step('skips the ephemeral royalty coin when listing input coins', () => {
+      const ids = extractOfferedCoinIds(NFT_ARB_BUY_OFFER);
+      assertEquals(ids.length, 2);
+      assertEquals(ids.some((id) => id.startsWith('4e16ba8b')), false);
+    });
+
+    await t.step('nets the arb to 89.7 CAT after the pass-through NFT royalty', () => {
+      const combined = combineOfferContents([
+        parseOfferContents(NFT_ARB_SELL_OFFER),
+        parseOfferContents(NFT_ARB_BUY_OFFER),
+      ]);
+
+      assertEquals(combined.intermediateNfts.length, 1);
+      assertEquals(combined.requestedFungible.length, 0);
+      assertEquals(combined.offeredFungible.length, 1);
+      assertEquals(combined.offeredFungible[0].mojos, 89_700n);
+      assertEquals(combined.royalties.length, 1);
+      assertEquals(combined.royalties[0].amounts[0].mojos, 300n);
     });
   },
 });

@@ -23,19 +23,25 @@ export interface FungibleAmount {
   mojos: bigint;
 }
 
+export interface RoyaltyCharge {
+  nft: NftAsset;
+  amounts: FungibleAmount[];
+}
+
 /** A single offer's contents, derived from its coin spends. */
 export interface OfferContents {
   requestedFungible: Map<string, bigint>;
   requestedNfts: Map<string, NftAsset>;
   offeredFungible: Map<string, bigint>;
   offeredNfts: Map<string, NftAsset>;
+  /**
+   * Royalties the taker owes for this offer's NFTs. They are fixed by the trade
+   * prices each NFT spend commits to, so they stay owed even when the NFT is
+   * passed straight on to another offer in a combined bundle.
+   */
+  royalties: RoyaltyCharge[];
   /** Maker fee in mojos. */
   fee: bigint;
-}
-
-export interface RoyaltyCharge {
-  nft: NftAsset;
-  amounts: FungibleAmount[];
 }
 
 export interface CombinedContents {
@@ -100,20 +106,41 @@ export function formatMojos(key: string, mojos: bigint): string {
 }
 
 /**
+ * Royalty owed on an NFT for the given trade prices, rounded down the same way
+ * the NFT's transfer program computes it on chain.
+ */
+export function royaltyForTradePrices(
+  nft: NftAsset,
+  tradePrices: Map<string, bigint>,
+): RoyaltyCharge | null {
+  const amounts: FungibleAmount[] = [];
+  for (const [key, mojos] of tradePrices) {
+    const royalty = (mojos * BigInt(nft.royaltyBasisPoints)) / 10000n;
+    if (royalty > 0n) amounts.push(amountOf(key, royalty));
+  }
+  return amounts.length > 0 ? { nft, amounts: sortAmounts(amounts) } : null;
+}
+
+/**
  * Merge per-offer contents into the combined offer's net position.
  *
  * Assets that one offer requests and another offers cancel out; whatever is
- * left is what the taker actually pays or receives. NFT royalties are charged
- * on the net requested amounts, matching how a wallet prices the trade.
+ * left is what the taker actually pays or receives. Each offer's NFT royalties
+ * are payments the taker must make, so they are netted like any other request.
  */
 export function combineOfferContents(offers: OfferContents[]): CombinedContents {
   const grossRequested = new Map<string, bigint>();
   const grossOffered = new Map<string, bigint>();
+  const royalties: RoyaltyCharge[] = [];
   let fee = 0n;
 
   for (const offer of offers) {
     for (const [key, mojos] of offer.requestedFungible) addTo(grossRequested, key, mojos);
     for (const [key, mojos] of offer.offeredFungible) addTo(grossOffered, key, mojos);
+    for (const charge of offer.royalties) {
+      royalties.push(charge);
+      for (const amount of charge.amounts) addTo(grossRequested, amount.key, amount.mojos);
+    }
     fee += offer.fee;
   }
 
@@ -165,37 +192,6 @@ export function combineOfferContents(offers: OfferContents[]): CombinedContents 
       requestedNfts.push(asRequested);
     } else if (asOffered) {
       offeredNfts.push(asOffered);
-    }
-  }
-
-  // Royalties are owed on NFTs the taker receives, priced off the net request.
-  const royaltyNfts = offeredNfts.filter((nft) => nft.royaltyBasisPoints > 0);
-  const royalties: RoyaltyCharge[] = [];
-
-  if (royaltyNfts.length > 0 && requestedFungible.length > 0) {
-    const shareCount = BigInt(royaltyNfts.length);
-    const royaltyTotals = new Map<string, bigint>();
-
-    for (const nft of royaltyNfts) {
-      const amounts: FungibleAmount[] = [];
-      for (const base of requestedFungible) {
-        const tradePrice = base.mojos / shareCount;
-        const royalty = (tradePrice * BigInt(nft.royaltyBasisPoints)) / 10000n;
-        if (royalty <= 0n) continue;
-        amounts.push(amountOf(base.key, royalty));
-        addTo(royaltyTotals, base.key, royalty);
-      }
-      if (amounts.length > 0) {
-        royalties.push({ nft, amounts: sortAmounts(amounts) });
-      }
-    }
-
-    for (const amount of requestedFungible) {
-      amount.mojos += royaltyTotals.get(amount.key) ?? 0n;
-    }
-    // Royalties are real payments, so they belong in the gross total too.
-    for (const [key, mojos] of royaltyTotals) {
-      addTo(grossRequested, key, mojos);
     }
   }
 

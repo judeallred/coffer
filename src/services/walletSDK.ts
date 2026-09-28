@@ -3,10 +3,10 @@
 // and extend them with our custom loader's exports
 
 import { CoinSpend, Signature, SpendBundle } from 'chia-wallet-sdk-wasm';
-import type { ParsedCatInfo, ParsedNftInfo, Program, Puzzle } from 'chia-wallet-sdk-wasm';
+import type { Coin, ParsedCatInfo, ParsedNftInfo, Program, Puzzle } from 'chia-wallet-sdk-wasm';
 import { bytesToHex, findOfferedCoinConflicts, isZeroParent } from '../utils/coinUtils.ts';
 import type { CoinConflict } from '../utils/coinUtils.ts';
-import { XCH_KEY } from '../utils/offerContents.ts';
+import { royaltyForTradePrices, XCH_KEY } from '../utils/offerContents.ts';
 import type { NftAsset, OfferContents } from '../utils/offerContents.ts';
 
 // Type for the WASM module - combines official types with our custom loader exports
@@ -26,16 +26,22 @@ function requireWasm(): WasmModule {
 }
 
 /**
- * Extract hex coin IDs for offered (non-settlement) coins in an offer.
+ * Extract hex coin IDs for the offer's input coins: the ones that must already
+ * exist on chain. Settlement placeholders (zero parent) are skipped, as are
+ * ephemeral coins created and spent within the same bundle, such as the
+ * settlement coin a maker uses to pay royalties on an NFT they request.
  */
 export function extractOfferedCoinIds(offerString: string): string[] {
   const wasm = requireWasm();
   const spendBundle = wasm.decodeOffer(offerString.trim());
   if (!spendBundle?.coinSpends) return [];
 
+  const spentIds = new Set(spendBundle.coinSpends.map((cs) => bytesToHex(cs.coin.coinId())));
+
   const ids: string[] = [];
   for (const coinSpend of spendBundle.coinSpends) {
     if (isZeroParent(coinSpend.coin.parentCoinInfo)) continue;
+    if (spentIds.has(bytesToHex(coinSpend.coin.parentCoinInfo))) continue;
     ids.push(bytesToHex(coinSpend.coin.coinId()));
   }
   return ids;
@@ -115,6 +121,41 @@ function sumCreateCoins(
   return { toTarget, total };
 }
 
+/** A trade price as committed on chain: its asset is named by settlement puzzle hash. */
+interface RawTradePrice {
+  amount: bigint;
+  puzzleHash: string;
+}
+
+/**
+ * Trade prices an offered NFT commits to in its transfer condition. The NFT's
+ * transfer program asserts a royalty payment for each one and for nothing
+ * else, so an NFT spend without a transfer condition owes no royalty.
+ */
+function readNftTradePrices(puzzle: Puzzle, coin: Coin, solution: Program): RawTradePrice[] {
+  try {
+    const parsed = puzzle.parseNft(coin, solution);
+    if (!parsed) return [];
+    const output = parsed.p2Puzzle.program.run(parsed.p2Solution, MAX_PUZZLE_COST, false);
+    for (const condition of output.value.toList() ?? []) {
+      let transfer;
+      try {
+        transfer = condition.parseTransferNft();
+      } catch {
+        continue;
+      }
+      if (!transfer) continue;
+      return transfer.tradePrices.map((price) => ({
+        amount: price.amount,
+        puzzleHash: bytesToHex(price.puzzleHash),
+      }));
+    }
+  } catch {
+    return [];
+  }
+  return [];
+}
+
 function parseNftInfoSafe(puzzle: Puzzle): ParsedNftInfo | null {
   try {
     return puzzle.parseNftInfo() ?? null;
@@ -150,6 +191,7 @@ export function parseOfferContents(offerString: string): OfferContents {
     requestedNfts: new Map(),
     offeredFungible: new Map(),
     offeredNfts: new Map(),
+    royalties: [],
     fee: 0n,
   };
 
@@ -157,6 +199,11 @@ export function parseOfferContents(offerString: string): OfferContents {
     if (mojos <= 0n) return;
     map.set(key, (map.get(key) ?? 0n) + mojos);
   };
+
+  // Trade prices name their asset by its settlement puzzle hash, which matches
+  // the puzzle hash of that asset's requested settlement coin.
+  const settlementKeys = new Map<string, string>([[settlementHex, XCH_KEY]]);
+  const nftTradePrices: Array<{ nft: NftAsset; prices: RawTradePrice[] }> = [];
 
   for (const coinSpend of spendBundle.coinSpends ?? []) {
     const clvm = new wasm.Clvm();
@@ -174,7 +221,9 @@ export function parseOfferContents(offerString: string): OfferContents {
       if (nftAsset) {
         contents.requestedNfts.set(nftAsset.launcherId, nftAsset);
       } else if (cat) {
-        add(contents.requestedFungible, `cat:${bytesToHex(cat.info.assetId)}`, requested);
+        const key = `cat:${bytesToHex(cat.info.assetId)}`;
+        add(contents.requestedFungible, key, requested);
+        settlementKeys.set(bytesToHex(coinSpend.coin.puzzleHash), key);
       } else {
         add(contents.requestedFungible, XCH_KEY, requested);
       }
@@ -204,6 +253,10 @@ export function parseOfferContents(offerString: string): OfferContents {
     if (nftAsset) {
       if (sums.toTarget > 0n) {
         contents.offeredNfts.set(nftAsset.launcherId, nftAsset);
+        nftTradePrices.push({
+          nft: nftAsset,
+          prices: readNftTradePrices(puzzle, coinSpend.coin, solution),
+        });
       }
     } else if (cat) {
       add(contents.offeredFungible, `cat:${bytesToHex(cat.info.assetId)}`, sums.toTarget);
@@ -212,6 +265,17 @@ export function parseOfferContents(offerString: string): OfferContents {
       // Plain XCH spends are the only place a maker fee can hide.
       contents.fee += coinSpend.coin.amount - sums.total;
     }
+  }
+
+  // Resolved after the loop because settlement coins may follow the NFT spend.
+  for (const { nft, prices } of nftTradePrices) {
+    const byAsset = new Map<string, bigint>();
+    for (const price of prices) {
+      const key = settlementKeys.get(price.puzzleHash);
+      if (key) add(byAsset, key, price.amount);
+    }
+    const charge = royaltyForTradePrices(nft, byAsset);
+    if (charge) contents.royalties.push(charge);
   }
 
   return contents;
@@ -233,8 +297,8 @@ export interface ChainVerificationResult {
 }
 
 /**
- * Verify offered coins are still unspent on mainnet via Coinset.
- * Settlement coins (zero parent) are excluded by extractOfferedCoinIds.
+ * Verify the offers' input coins are still unspent on mainnet via Coinset.
+ * Settlement placeholders and ephemeral coins are excluded by extractOfferedCoinIds.
  */
 export async function verifyOfferedCoinsOnChain(
   offers: string[],
