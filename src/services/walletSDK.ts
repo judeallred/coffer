@@ -323,7 +323,7 @@ export async function verifyOfferedCoinsOnChain(
   }
 
   try {
-    const client = wasm.CoinsetClient.mainnet();
+    const client = wasm.RpcClient.mainnet();
     const names = coinIds.map((hex) => {
       const bytes = new Uint8Array(hex.length / 2);
       for (let i = 0; i < hex.length; i += 2) {
