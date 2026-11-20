@@ -79,7 +79,8 @@ jobs:
   verify:
     name: Verify Deployment
     needs: deploy
-    runs-on: ubuntu-latest
+    # Playwright 1.59 cannot install Chromium on ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: read
